@@ -1,18 +1,39 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
-        <groupId>fi.nls.oskari</groupId>
-        <artifactId>oskari-parent</artifactId>
-        <version>1.41.0</version>
+        <groupId>fi.livi.oskari</groupId>
+        <artifactId>livi-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <groupId>fi.nls.oskari</groupId>
     <artifactId>webapp-map</artifactId>
     <packaging>war</packaging>
-    <name>Oskari Map Web Application</name>
+    <name>Webapp for map</name>
+
+    <properties>
+        <appName>oskari-map</appName>
+    </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>fi.livi.oskari</groupId>
+            <artifactId>app-resources</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>fi.livi.oskari</groupId>
+            <artifactId>server-extension</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>fi.nls.oskari.service</groupId>
+            <artifactId>oskari-control-admin</artifactId>
+            <version>${oskari.version}</version>
+        </dependency>
+
         <!-- Replace icu4j version included by axiom-api with newer version
         which does not brake .jar investigation performed by jetty-maven plugin  -->
         <dependency>
@@ -21,69 +42,17 @@
             <version>51.1</version>
         </dependency>
 
-        <dependency>
-            <groupId>fi.nls.oskari</groupId>
-            <artifactId>servlet-saml-config</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-base</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-users</artifactId>
-        </dependency>
-
+        <!-- oskari -->
         <dependency>
             <groupId>fi.nls.oskari.service</groupId>
             <artifactId>oskari-control-example</artifactId>
+            <version>${oskari.version}</version>
         </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-myplaces</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-admin</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-routing</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-control-statistics</artifactId>
-        </dependency>
-        <!-- Statistics plugins -->
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-statistics-eurostat</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>service-statistics-pxweb</artifactId>
-        </dependency>
-        <!-- /Statistics plugins -->
-
 
         <dependency>
             <groupId>fi.nls.oskari</groupId>
-            <artifactId>service-logging</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>fi.nls.oskari</groupId>
-            <!-- artifactId>map-servlet</artifactId -->
             <artifactId>servlet-map</artifactId>
+            <version>${oskari.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.ibm.icu</groupId>
@@ -93,41 +62,31 @@
         </dependency>
 
         <dependency>
+            <groupId>fi.nls.oskari</groupId>
+            <artifactId>service-logging</artifactId>
+            <version>${oskari.version}</version>
+        </dependency>
+        <!-- /oskari -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-dbcp2</artifactId>
+            <version>${commons-dbcp2.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
         </dependency>
+
     </dependencies>
 
     <build>
-        <finalName>oskari-map</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-war-plugin</artifactId>
-                <version>2.6</version>
-            </plugin>
-
-            <plugin>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-maven-plugin</artifactId>
-                <version>9.2.9.v20150224</version>
-
-                <configuration>
-                    <httpConnector>
-                        <port>2373</port>
-                    </httpConnector>
-                    <webAppConfig>
-                        <baseResource implementation="org.eclipse.jetty.util.resource.ResourceCollection">
-                            <resourcesAsCSV>${basedir}/target/oskari-map,${basedir}/../..</resourcesAsCSV>
-                        </baseResource>
-                    </webAppConfig>
-                </configuration>
-            </plugin>
-        </plugins>
+        <finalName>${appName}</finalName>
     </build>
 </project>
