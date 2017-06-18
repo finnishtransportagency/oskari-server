@@ -1,0 +1,19 @@
+{
+    "setup": [
+        "create-empty-db",
+        "register-bundles",
+        "postgres-add-users",
+        "postgres-add-JAAS",
+        {
+            "sql" : [
+                "populate-Inspire-themes.sql",
+                "app-organisations.sql"
+            ]
+        }
+    ],
+    "views": [
+        "default-full-view.json",
+        "ol3-publisher-template-view.json",
+        "statsgrid-view.json"
+    ]
+}

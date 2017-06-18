@@ -1,0 +1,25 @@
+{
+  "srs_name": "EPSG:3067",
+  "type":"wmtslayer",
+  "url":"https://karttakuva.maanmittauslaitos.fi/maasto/wmts",
+  "name":"taustakartta",
+  "organization": "Maanmittauslaitos",
+  "inspiretheme": "Taustakartat",
+  "locale": {
+    "fi": {
+      "name": "Taustakarttasarja"
+    },
+    "sv": {
+      "name": "Backgrundskartserie"
+    },
+    "en": {
+      "name": "Background map serie"
+    }
+  },
+  "role_permissions": {
+    "Guest" : ["VIEW_LAYER", "VIEW_PUBLISHED"],
+    "User" : ["VIEW_LAYER", "VIEW_PUBLISHED", "PUBLISH"]
+  },
+  "version": "1.0.0",
+  "tileMatrixSetId":"ETRS-TM35FIN"
+}
