@@ -1,5 +1,83 @@
 # Migration guide
 
+## 1.44.0
+
+### Requirements change
+
+*Oskari-server now requires Java 8* to run and compile due to (and in preparation of) library upgrades. 
+
+Common issues:
+
+- Development environments need to be updated to compile using Java 8
+- Servers need to be updated to run Jetty with Java 8
+- Jetty start.ini needs to be updated (see https://github.com/oskariorg/sample-configs/commit/508e0ff5353515ead660d595c15870231c52714b)
+- server-extensions might use older versions of dependencies which might cause version conflicts. Update the dependencies on extensions as well.
+
+### Transparent fill & stroke on polygons
+
+DefaultStyle SLDs needs to be manually updated on Geoserver from
+https://github.com/oskariorg/oskari-server/tree/master/content-resources/src/main/resources/sld
+
+### Users service
+
+The database access library has been updated from iBATIS to MyBatis. DatabaseUserService now uses MybatisRoleService and MybatisUserService. If you are using old IbatisRoleService or IbatisUserService in your own Oskari server extensions, you have to update them to use MybatisRoleService and MybatisUserService implementations.
+
+### Injected profile link (personaldata bundle)
+
+Personal data (My data in UI) previously used the "edit profile" link from property 'auth.register.url' which is also
+   used by other functionality as property that holds registration url.
+    
+This has been changed and personaldata now uses a more appropriate 'auth.profile.url' so registration and personaldata
+ can co-exist without conflict.
+
+## 1.42.1
+
+### User registration feature
+
+The feature has been significantly changed. See ReleaseNotes for details.
+
+### Layer urls handling for https-services
+
+Layers with http:// urls are now proxied using the GetLayerTile action route by default.
+Previously the protocol was replaced with https:// and to preserve this functionality you can add a property
+ for oskari-ext.properties:
+
+    maplayer.wmsurl.secure=https://
+
+## 1.42.0
+
+### Thematic maps regionsets
+
+Any statslayer rows in the database table oskari_maplayer should include a value in the srs_name column (like 'EPSG:4326').
+This is required for creating GeoJSON for the regions and doing transforms on the geometry.
+
+### New bundle "maprotator" for sample application
+
+The new bundle allows published maps to be rotated. The bundle is added to sample application views automatically.
+If you don't want it to be added to the sample you can add this property to oskari-ext.properties:
+
+    flyway.sample.1_0_10.skip=true
+
+### Openlayers 3 version for geoportal view for development
+ 
+Initial Openlayers 3 geoportal view can be added for the sample application. To add it a property is required in oskari-ext.properties:
+
+    flyway.sample.1_0_11.skip=false
+
+The view is NOT added automatically if you don't opt in. The view to create can be further configured with optional properties:
+
+    flyway.sample.1_0_11.file=ol3-geoportal-view.json
+    flyway.sample.1_0_11.view=[id for view to use as config/state template]
+    
+File needs to point to a json-file similar to 
+https://github.com/oskariorg/oskari-server/blob/master/content-resources/src/main/resources/json/views/default-full-view.json.
+The file should be located in the server classpath under /json/views/[filename].
+Note that only bundle startup information is used while config/state is being copied from the default view of the Oskari-instance.
+If you want to use a custom view as config/state template you can use the flyway.sample.1_0_11.view-property to point such view.
+The log will show the uuid for the new view once it's added or you can check the database table
+ portti_view for the uuid of the latest view in the system.
+
+    
 ## 1.41.0
 
 ### Code refactoring

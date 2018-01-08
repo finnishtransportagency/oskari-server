@@ -1,5 +1,355 @@
 # Release Notes
 
+## 1.44.1
+
+### XmlHelper
+
+Now configured to reject external entities in XML.
+
+### CSW/layer coverage data handling 
+
+The extent of a layer is described with an envelope in WGS84 coordinates. Currently the envelope is reprojected to the
+ currently used coordinate system by reprojecting the bottom left corner and the upper right corner coordinates and
+  forming another envelope from those. This often creates creates unwanted results especially when dealing with huge
+   extents (for example (-180,45),(180,90)) or when using for example North Pole LAEA projections.
+
+This functionality has been improved by generating a polygon from the envelope with (possibly) more than five
+ coordinates (each corner + the first corner again for closing the ring) via linear interpolation.
+  The generated polygon is then transformed to the target coordinate system.
+
+## 1.44.0
+
+### Library changes and Java requirement change
+
+*Oskari-server now requires Java 8.*
+
+Updated libs:
+
+- Postgres JDBC from 9.3-1102-jdbc41 to 42.1.4
+- Jedis from 2.7.2 to 2.9.0
+- MyBatis from 3.4.1 to 3.4.5
+- jsoup from 1.7.2 to 1.10.3
+- Jackson from 2.5.4 to 2.9.0
+- Axiom from 1.2.15 to 1.2.20
+- Dropwizard metrics from 3.1.0 to 3.2.4
+
+### State cookie handling
+
+Added error handling to state handling.
+State cookie parsing no longer assumes that referenced bundles are part of the appsetup.
+
+### GFI response sanitation
+
+Style-tags in GFI html response were interfering with global Oskari CSS.
+Response html is now sanitized with Jsoup if presentation type is TEXT which removes potentially dangerous
+ script injections as well.
+Only tags in in Jsoup ["relaxed" whitelist](https://jsoup.org/apidocs/org/jsoup/safety/Whitelist.html#relaxed--) are allowed.
+
+### Terms of use for map publish functionality
+
+Separate terms of use for map publishing functionality can now be configured in oskari-ext.properties:
+
+    oskari.map.terms.url=https://my.site/terms
+    oskari.map.publish.terms.url=https://my.site/terms-for-publishing
+
+The code will look for publish terms first and default to the generic terms config if not found.
+Both properties can be localized by adding .fi/.en etc language code at the end of the key.
+The value will be populated to publisher/publisher2 bundle configs.
+
+### Userlayer import
+
+New imported userlayers now maintain order for feature properties (user_layer-table's fields-column stored as JSON array instead of object).
+
+The database access library has been updated from Ibatis to Mybatis.
+UserLayerDbService has been changed to be suitable for new Mybatis implementation.
+Old iBATIS implementation isn't compatible with new UserLayerDbService.
+Now layer, style and data inserts are handled in one transaction.
+
+Added error codes (e.g. invalid_file) to response instead of textual messages to support localization in the frontend.
+
+Added feature count to layerJSON response. Also adds a warning object with skipped_features to layerJSON response
+ if feature(s) were skipped (no geometry object or geometry is null) during import.
+
+### Improvements to CSW response parsing
+
+Improved data quality information parsing for metadata.
+
+New configuration option for filtering out field values from MetadataSearchOptions query:
+
+    search.channel.METADATA_CATALOGUE_CHANNEL.field.<field name>.blacklist=<comma separated list of values>
+
+
+### Initial search channel autocomplete functionality
+
+Added initial autocomplete support for search channels. Any search channel that can support autocompletion can
+ implement a new SearchAutocomplete interface to participate on the autocomplete results.
+
+See service-search-nls/src/main/java/fi/nls/oskari/search/channel/ELFGeoLocatorSearchChannel.java for an example.
+
+### Transparent fill & stroke on polygons
+
+Polygon style now supports no fill and no stroke. The condition is expressed as allowed null color string values for
+ "fill_color" and "border_color" in UserLayerStyle/AnalysisStyle/MyPlaceCategory/WFSLayerStore.
+
+### Initial version of print functionality rewrite
+
+New Maven module service-print which provides built-in png/pdf generation for replacing the current
+ servlet-printout once it has been proved production ready.
+
+### Additional layer configuration
+
+WMS-layers GFI functionality can now be enabled/disabled overwriting layer capabilities by adding a configuration in database
+ oskari_maplayer.attributes:
+
+    {
+        "isQueryable" : false
+    }
+
+### Layer updating 
+
+Modifying layers registered to Oskari always updated "params" and "attributes" fields even if the client didn't send them.
+Now they are modified only if new values are sent in the request and like other parameters can be omitted without problem.
+
+
+### Test resources/helper
+
+Added a database connection helper in shared-test-resources/TestHelper.
+Provide database credentials/url with env property:
+
+    # linux
+    export oskari_db_test_props=/opt/my.test.properties
+    # windows
+    set oskari_db_test_props=C:/somefolder/my.test.properties
+
+Use assumeTrue to check for db connection WHEN test relies on database connection as it might not always
+ be available depending on the build environment:
+
+    @Test
+    public void testingDB() {
+        assumeTrue(TestHelper.dbAvailable());
+        DataSource ds = TestHelper.getDBforUnitTest();
+        // TODO: use ds for tests
+    }
+
+The TestHelper reads the properties to PropertyUtil so remember to clean up after a test using database:
+
+    @AfterClass
+    public static void teardown() {
+        PropertyUtil.clearProperties();
+    }
+
+### ELF GeoLocator search channel
+
+Removed countries listing resource JSON. Instead uses a CountryFilter operation to fetch the countries from
+ the service.
+
+### Spationeo integration
+
+Removed serval API integration and now only including the monitor API.
+
+### service-users
+
+The database access library has been updated from iBATIS to MyBatis. DatabaseUserService now uses MybatisRoleService and MybatisUserService.
+
+### Database services MyBatis migration
+
+Services have been migrated from Ibatis to MyBatis library:
+ 
+- KeywordService
+- KeywordRelationService
+- AnalysisService
+- AnalyisisStyleService
+- AnalysisAndStyleService removed because it's not used
+- UserService
+- RoleService
+
+Ibatis is still used by some services, but any new functionality should be implemented with MyBatis.
+
+## 1.43.0
+
+### servlet-printout
+
+Printout no longer assumes Redis is on localhost. Configurable in print-properties with: 
+
+    redis.hostname=localhost
+    redis.port=6379
+
+### KTJKIISearchChannel
+
+Removed spammy log messages when results were not found.
+
+## 1.42.1
+
+### User registration functionality rewrite
+
+There was some missing validations and funky looking error handling/messaging on the user registration feature.
+It has been rewritten:
+
+ - registration starts by just entering email address
+ - invalid/expired tokens are now handled by showing a page where user can continue and not the "next step" with an error message.
+ - tokens are now refreshed when the user requests another one so users can't get stuck with an expired token and no means of resetting it.
+ - mails now use HTML-templates that are customizable for the Oskari instance
+ - passwords now have configurable strength check
+ - new users are written to db after they have completed the registration (previously when the initial email was sent for confirmation)
+ - emails and usernames are now checked in case-insensitive fashion
+ - user content (myplaces, saved views, embedded maps, userlayers, analysis, indicators) is now removed from the database with the user.
+
+To customize password requirements configure oskari-ext.properties:
+
+    # min length for user password
+    user.passwd.length=8
+    # Require lower and UPPER chars
+    user.passwd.case=true
+    # Number of days that registration/passwd recover links are valid
+    oskari.email.link.expirytime=2
+    
+To customize email-templates configure oskari-ext.properties (add files in classpath for example under jetty/resources/templates):
+
+    # defaults
+    # on registration init
+    oskari.email.registration.tpl=/templates/registration_email.html
+    # on registration init if there's already a user account with the email
+    oskari.email.exists.tpl=/templates/registration_email_exists.html
+    # on "forgot my password"
+    oskari.email.passwordrecovery.tpl=/templates/user_passwordreset_email.html
+    # on "forgot my password" when there's no user account associated with the email
+    oskari.email.passwordrecovery.noaccount.tpl=/templates/user_passwordreset_email_new_user.html
+    
+    # you can specify localized versions by adding the language code at the end of the property key 
+    oskari.email.registration.tpl.fi=/templates/registration_email_finnish_version.html
+
+
+The default templates are stored in control-users/src/main/resources/fi/nls/oskari/control/users/service
+The templates receive variables for:
+
+ - URL to continue the process (link_to_continue)
+ - number of days before the token expires (days_to_expire)
+
+### Thematic maps
+
+Fixed an issue where GetRegions action route returns the geometry reference point incorrect projection.
+
+### service-csw
+
+Fixed an issue where data quality fields were not parsed correctly from CSW response.
+
+### Layer urls handling for https-services
+
+Layer urls are modified for the frontend if the Oskari instance is running in a secure URL (https://). Most services only provide 
+ http urls and won't work properly if the map is loaded using https. For any layer where url doesn't start
+  with https:// or / the url is modified to use a proxied url with GetLayerTile action route.
+  Previously the protocol was replaced with https:// and to preserve this functionality you can add a property
+   for oskari-ext.properties:
+
+    maplayer.wmsurl.secure=https://
+
+### Shapefile import
+
+Shapefile import now tries to find cpg file for identifying the character encoding to be used. This fixes an issue where scandic letters are shown wrong with imported Shapefiles.
+
+The original Shapefile standard defines to use ISO-8859-1 for dpf file encoding. So by default Shapefile is parsed using ISO-8859-1. Optional cpg file can be used to specify the code page for identifying the character set to be used. Also the header of dbf has a reference to a code page (encoding) but unfortunately GeoTools can't handle it reliably. So if you want to use different encoding, you should include cpg file which describes used encoding. e.g. to use UTF-8 encoding create a myshapename.cpg with a texteditor and insert 5 characters (and nothing more): UTF-8.
+
+## 1.42
+
+### Default published JSP-file
+
+The map element now includes the class "published" as some features detect "embedded mode" using it. It was already 
+present in the published JSP in webapp-map but missing from the default. This fixes an issue where some frontend
+ features were started in "geoportal mode" on published maps with oskari-server-extensions (namely statsgrid2016 and maplegend).
+
+### SystemLogger
+
+The simple System.out/err logger can now be configured with environment variable "oskari.syslog.level" with a value of
+ debug, info, warn or error. Defaults to debug as before.
+
+### control-base
+
+Removed fi.nls.oskari.util.PrintOutHelper as it's not used anywhere. 
+Use JSONHelper.isEqual(JSONArray jsonArray1, JSONArray jsonArray2) for comparing arrays instead.
+
+### Search
+
+SearchResultItem.setVillage() and getVillage() have been deprecated and replaced with setRegion() and getRegion().
+ JSON-presentation of result items now include a region key in addition to the village key with the same value.
+ The village key will be removed in the future.
+ 
+WFSSearchChannels defaults config is migrated automatically renaming "village" to "region". 
+
+SearchOptions action route can now be configured to ignore some of the channels available in the system. This is done
+by configuring a comma-separated list of channel ids in oskari-ext.properties: 
+
+    actionhandler.SearchOptions.blacklist=METADATA_CATALOGUE_CHANNEL
+
+### AppSetup action route (publisher)
+
+Additional bundles can be whitelisted for publishing using a new property in oskari-ext.properties:
+
+    actionhandler.AppSetup.bundles.simple=maprotator,maplegend
+
+Defaults to maprotator and maplegend as new bundles that can be published. The value of the property is a comma-separated list of 
+bundle ids. If the payload from the browser has a configuration to a bundle that is whitelisted the bundle is added 
+to the published map view using the default startup from portti_bundle database table. The configuration and state for 
+the bundle are merged with the values from the browser before saving to the database.
+
+### Myplaces as WMS-layers (in embedded maps)
+
+My places layers used in embedded maps are shown as WMS-layers to the frontend, but have some custom behavior on the server.
+OpenLayers 3 defaults to WMS version 1.3.0 which might cause problems with coordinate order on some instances.
+My places layers that are used in embedded maps now use WMS 1.1.0 as a workaround for this. 
+ 
+Map clicks/GetFeatureInfo requests for my places layers should now properly work in embedded maps in
+ projections other than EPSG:3067.
+
+### WFS-layer removal fix
+
+The link between a custom SLD-style and a WFS-layer is now removed by database constraint when a layer is removed.
+This fixes an issue where the link prevented a WFS-layer with custom style being removed properly.
+
+### Thematic maps
+
+The GetRegions action route now returns the geometry as GeoJSON and reference point for the region in addition to id and name. 
+The action route now requires srs-parameter to be sent and any statslayer rows in the database should include the srs_name value.
+
+Datasources configuration can now have an info-object including a url key for more information about the datasource.
+The frontend will provide a link with the datasource name in attribution information when provided. 
+
+### UserLayerProcessor for property_json
+
+The UserLayerProcessor parses features' property_json JSONObject to new actual properties. Now GFI popup and Feature Data table show user data correctly.
+
+selected_feature_params and feature_params_locales are set empty from portti_wfs_layer table to get all non-geometry feature properties.
+
+Properties: uuid, user_layer_id, feature_id, created, updated and attention_text comes from user_layer_data table and are excluded from feature properties.
+
+### Datasource handling
+
+The datasource configuration didn't work properly before when datasource creation was done by Oskari: 
+all the database modules used the default datasource. For most use cases this is acceptable, but the problem emerges
+ when using different database connections for "core" oskari, myplaces, analysis and userlayers.
+
+You can now specify additional connections per flyway module. These are the defaults:
+
+    db.url=jdbc:postgresql://localhost:5432/oskaridb
+    db.username=oskari
+    db.password=oskari
+    db.additional.modules=myplaces,analysis,userlayer,myapp
+    
+If you would want to store myplaces to different database you can add the properties:
+
+    db.myplaces.url=jdbc:postgresql://localhost:5432/db_for_usercontent
+    db.myplaces.username=oskari
+    db.myplaces.password=oskari
+    db.myplaces.jndi.name=jdbc/myplacesPool
+
+If the user/pass is the same, you can leave them out and it will default to db.username/db.password property values.
+Note! Ibatis-mappings for analysis and userlayers still have hardcoded values as JNDI-name so you might need to override files under
+"servlet-map/src/main/resources/META-INF": SqlMapConfig_Analysis.xml and SqlMapConfig_UserLayer.xml.
+
+### service-csw
+ 
+Date parsing has been improved. Any non-parseable dates are now used as is from the XML. This fixes an issue where CSW data
+with dates having for example only year or year and month failed parsing and the user was presented with an empty result.
+
 ## 1.41
 
 ### CSW Metadata improvements
@@ -25,7 +375,7 @@ This will result in the query having a like filter:
 		<ogc:Literal><![CDATA[someValue]]></ogc:Literal>
 	</ogc:PropertyIsLike>
 
-If you want to do an exact match you can include filterOp=COMP_EQUAL as another property:
+If you want to do an exact match you can include filterOp=COMP_EQUAL as additional property:
 
     search.channel.METADATA_CATALOGUE_CHANNEL.field.alwaysOnFilter.filterOp=COMP_EQUAL
 
