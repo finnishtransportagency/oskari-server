@@ -24,7 +24,7 @@ public class DownloadInfo extends ActionHandler {
 
 	private final Logger LOGGER = LogFactory.getLogger(DownloadInfo.class);
 
-	private static final String PARAM_DOWNLOAD_DETAILS = "downLoadDetails";
+	private static final String PARAM_DOWNLOAD_DETAILS = "downloadDetails";
 	private static final String PARAM_USER_DETAILS = "userDetails";
 	private OskariLayerService mapLayerService;
 
@@ -36,11 +36,11 @@ public class DownloadInfo extends ActionHandler {
 	@Override
 	public void handleAction(final ActionParameters params) throws ActionException {
 
-		String downLoadDetails = params.getRequiredParam(PARAM_DOWNLOAD_DETAILS);
+		String downloadDetails = params.getRequiredParam(PARAM_DOWNLOAD_DETAILS);
 		String strUserDetails = params.getRequiredParam(PARAM_USER_DETAILS);
 		try {
 			JSONObject userDetails = new JSONObject(strUserDetails);
-			JSONArray ddArray = new JSONArray(downLoadDetails);
+			JSONArray ddArray = new JSONArray(downloadDetails);
 			new SendDownloadDetailsToEmailThread(mapLayerService, ddArray, userDetails, params.getLocale()).run();
 		} catch (Exception e) {
 			throw new ActionException("Could not handle DownloadInfo request: ", e);

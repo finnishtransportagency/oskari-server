@@ -30,14 +30,14 @@ public class OGCServices {
 	/**
 	 * Get filter
 	 * 
-	 * @param downLoadDetails
+	 * @param downloadDetails
 	 *            download details
 	 * @param writeParam
 	 *            write param
 	 *
 	 * @return filter url param and value
 	 */
-	public static String getFilter(JSONObject downLoadDetails, Boolean writeParam)
+	public static String getFilter(JSONObject downloadDetails, Boolean writeParam)
 			throws JSONException, UnsupportedEncodingException {
 		StringBuilder s = new StringBuilder();
 
@@ -47,22 +47,22 @@ public class OGCServices {
 			normalDownloads.addDownload(download);
 		}
 
-		final String croppingMode = downLoadDetails.getString(PARAM_CROPPING_MODE);
+		final String croppingMode = downloadDetails.getString(PARAM_CROPPING_MODE);
 		String croppingLayer = "";
-		if (downLoadDetails.has(PARAM_CROPPING_LAYER)) {
-			croppingLayer = downLoadDetails.getString(PARAM_CROPPING_LAYER);
+		if (downloadDetails.has(PARAM_CROPPING_LAYER)) {
+			croppingLayer = downloadDetails.getString(PARAM_CROPPING_LAYER);
 		}
 
 		if (normalDownloads.isBboxCropping(croppingMode, croppingLayer)) {
 			if (writeParam) {
 				s.append("&bbox=");
 			}
-			s.append(getBbox(downLoadDetails.getJSONObject(PARAM_BBOX)));
+			s.append(getBbox(downloadDetails.getJSONObject(PARAM_BBOX)));
 		} else {
 			if (writeParam) {
 				s.append("&filter=");
 			}
-			s.append(URLEncoder.encode(getPluginFilter(downLoadDetails), "UTF-8"));
+			s.append(URLEncoder.encode(getPluginFilter(downloadDetails), "UTF-8"));
 		}
 
 		return s.toString();
