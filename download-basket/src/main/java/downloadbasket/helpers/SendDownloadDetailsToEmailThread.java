@@ -57,7 +57,7 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 
 	public SendDownloadDetailsToEmailThread(OskariLayerService mapLayerService, JSONArray downLoadDetails,
 			JSONObject userDetails, Locale locale) {
-		this.downLoadDetails = downLoadDetails;
+		this.downloadDetails = downloadDetails;
 		this.userDetails = userDetails;
 		this.locale = locale;
 		this.mapLayerService = mapLayerService;
