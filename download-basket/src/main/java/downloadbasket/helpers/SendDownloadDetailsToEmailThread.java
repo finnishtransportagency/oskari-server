@@ -31,7 +31,7 @@ import org.json.JSONObject;
  */
 public class SendDownloadDetailsToEmailThread implements Runnable {
 	private final OskariLayerService mapLayerService;
-	private final JSONArray downloadDetails;
+	private final JSONArray downLoadDetails;
 	private final JSONObject userDetails;
 	private final Locale locale;
 
@@ -48,16 +48,16 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 	 *            map layer service
 	 * @param userDetails
 	 *            user details
-	 * @param downloadDetails
+	 * @param downLoadDetails
 	 *            download details
 	 * @param Locale
 	 *            locale
 	 * 
 	 */
 
-	public SendDownloadDetailsToEmailThread(OskariLayerService mapLayerService, JSONArray downloadDetails,
+	public SendDownloadDetailsToEmailThread(OskariLayerService mapLayerService, JSONArray downLoadDetails,
 			JSONObject userDetails, Locale locale) {
-		this.downloadDetails = downloadDetails;
+		this.downLoadDetails = downLoadDetails;
 		this.userDetails = userDetails;
 		this.locale = locale;
 		this.mapLayerService = mapLayerService;
@@ -72,8 +72,8 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 		}
 		try {
 			DownloadServices ds = new DownloadServices();
-			for (int i = 0; i < downloadDetails.length(); i++) {
-				JSONObject download = downloadDetails.getJSONObject(i);
+			for (int i = 0; i < downLoadDetails.length(); i++) {
+				JSONObject download = downLoadDetails.getJSONObject(i);
 				final String croppingMode = download.getString(PARAM_CROPPING_MODE);
 				String croppingLayer = "";
 				if (download.has(PARAM_CROPPING_LAYER)) {
