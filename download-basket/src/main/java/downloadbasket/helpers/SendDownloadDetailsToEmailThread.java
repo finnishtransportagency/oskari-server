@@ -39,7 +39,7 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 	private final String PARAM_CROPPING_MODE = "croppingMode";
 	private final String PARAM_CROPPING_LAYER = "croppingLayer";
 	private final String PARAM_LAYER = "layer";
-	private final String PARAM_LAYER_ID = "id";
+	private final String PARAM_LAYER_ID = "wmsUrl";
 
 	/**
 	 * Constructor.
