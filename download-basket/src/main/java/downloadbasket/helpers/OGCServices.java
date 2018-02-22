@@ -111,25 +111,25 @@ public class OGCServices {
 				String uniqueValue = identifier.getString("uniqueValue");
 				String cropGeomColumn = identifier.getString("geometryName");
 				String filterColumnType = identifier.getString("geometryColumn");
-				xsw.writeStartElement("Intersects");
+				xsw.writeStartElement(OGC, "Intersects");
 				
-				xsw.writeStartElement("PropertyName");
+				xsw.writeStartElement(OGC, "PropertyName");
 				xsw.writeCharacters(cropGeomColumn);
 				xsw.writeEndElement();
-				xsw.writeStartElement("Function");
+				xsw.writeStartElement(OGC, "Function");
 				xsw.writeAttribute("name", "querySingle");				
-				xsw.writeStartElement("Literal");
+				xsw.writeStartElement(OGC, "Literal");
 				xsw.writeCharacters(croppingNameSpace + ":" + layerName);
 				xsw.writeEndElement();
-				xsw.writeStartElement("Literal");
+				xsw.writeStartElement(OGC, "Literal");
 				xsw.writeCharacters(cropGeomColumn);
 				xsw.writeEndElement();
 				if (filterColumnType.equals("STRING")) {
-					xsw.writeStartElement("Literal");
+					xsw.writeStartElement(OGC, "Literal");
 					xsw.writeCharacters(uniqueColumn + " LIKE '" + uniqueValue.trim() + "%" + "'");
 					xsw.writeEndElement();
 				} else {
-					xsw.writeStartElement("Literal");
+					xsw.writeStartElement(OGC, "Literal");
 					xsw.writeCharacters(uniqueColumn + " =  " + uniqueValue);
 					xsw.writeEndElement();
 				}
