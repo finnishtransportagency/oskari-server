@@ -98,7 +98,6 @@ public class OGCServices {
 
 			XMLStreamWriter xsw = XMLOutputFactory.newInstance().createXMLStreamWriter(baos);
 			String OGC = "http://www.opengis.net/ogc";
-			xsw.setPrefix("ogc", OGC);
 			
 			if (identifiers.length() > 1) {
 				xsw.writeStartElement(OGC, "Or");
