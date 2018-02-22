@@ -81,14 +81,14 @@ public class OGCServices {
 	}
 
 	/**
-	 * Get WFS Query layer WFS request by using GeoServer Cross-layer filtering plugin.
+	 * Get WFS Query layer WFS request by using GeoServer Cross-layer filtering
+	 * plugin.
 	 * 
 	 * @param download
 	 *            download details
 	 */
-	
-	public static String getPluginFilter(JSONObject download)
-			throws JSONException {
+
+	public static String getPluginFilter(JSONObject download) throws JSONException {
 		JSONArray identifiers = new JSONArray(download.getString(PARAM_IDENTIFIERS));
 		String xml = "";
 		String croppingNameSpace = PropertyUtil.get("oskari.wfs.cropping.namespace");
@@ -99,11 +99,10 @@ public class OGCServices {
 			XMLStreamWriter xsw = XMLOutputFactory.newInstance().createXMLStreamWriter(baos);
 			String OGC = "http://www.opengis.net/ogc";
 			xsw.setPrefix("ogc", OGC);
-			
+
 			if (identifiers.length() > 1) {
 				xsw.writeStartElement(OGC, "Or");
 			}
-
 			for (int id = 0; id < identifiers.length(); id++) {
 				JSONObject identifier = identifiers.getJSONObject(id);
 				String layerName = Helpers.getLayerNameWithoutNameSpace(identifier.getString("layerName"));
@@ -112,12 +111,12 @@ public class OGCServices {
 				String cropGeomColumn = identifier.getString("geometryName");
 				String filterColumnType = identifier.getString("geometryColumn");
 				xsw.writeStartElement("Intersects");
-				
+
 				xsw.writeStartElement("PropertyName");
 				xsw.writeCharacters(cropGeomColumn);
 				xsw.writeEndElement();
 				xsw.writeStartElement("Function");
-				xsw.writeAttribute("name", "querySingle");				
+				xsw.writeAttribute("name", "querySingle");
 				xsw.writeStartElement("Literal");
 				xsw.writeCharacters(croppingNameSpace + ":" + layerName);
 				xsw.writeEndElement();
