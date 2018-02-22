@@ -98,7 +98,7 @@ public class OGCServices {
 
 			XMLStreamWriter xsw = XMLOutputFactory.newInstance().createXMLStreamWriter(baos);
 			String OGC = "http://www.opengis.net/ogc";
-			xsw.setPrefix(OGC);
+			xsw.setPrefix("ogc", OGC);
 			
 			if (identifiers.length() > 1) {
 				xsw.writeStartElement(OGC, "Or");
@@ -111,25 +111,25 @@ public class OGCServices {
 				String uniqueValue = identifier.getString("uniqueValue");
 				String cropGeomColumn = identifier.getString("geometryName");
 				String filterColumnType = identifier.getString("geometryColumn");
-				xsw.writeStartElement(OGC, "Intersects");
+				xsw.writeStartElement("Intersects");
 				
-				xsw.writeStartElement(OGC, "PropertyName");
+				xsw.writeStartElement("PropertyName");
 				xsw.writeCharacters(cropGeomColumn);
 				xsw.writeEndElement();
-				xsw.writeStartElement(OGC, "Function");
+				xsw.writeStartElement("Function");
 				xsw.writeAttribute("name", "querySingle");				
-				xsw.writeStartElement(OGC, "Literal");
+				xsw.writeStartElement("Literal");
 				xsw.writeCharacters(croppingNameSpace + ":" + layerName);
 				xsw.writeEndElement();
-				xsw.writeStartElement(OGC, "Literal");
+				xsw.writeStartElement("Literal");
 				xsw.writeCharacters(cropGeomColumn);
 				xsw.writeEndElement();
 				if (filterColumnType.equals("STRING")) {
-					xsw.writeStartElement(OGC, "Literal");
+					xsw.writeStartElement("Literal");
 					xsw.writeCharacters(uniqueColumn + " LIKE '" + uniqueValue.trim() + "%" + "'");
 					xsw.writeEndElement();
 				} else {
-					xsw.writeStartElement(OGC, "Literal");
+					xsw.writeStartElement("Literal");
 					xsw.writeCharacters(uniqueColumn + " =  " + uniqueValue);
 					xsw.writeEndElement();
 				}
