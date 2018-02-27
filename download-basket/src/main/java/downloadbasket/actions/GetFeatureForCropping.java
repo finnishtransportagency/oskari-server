@@ -30,6 +30,7 @@ import java.net.HttpURLConnection;
 /**
  * Handles the cropping of the data before adding it to the download basket.
  * Gets layer attributes and geometry for the cropping process.
+ * Added support for authorized cropping areas.
  */
 
 @OskariActionRoute("GetFeatureForCropping")
@@ -47,6 +48,9 @@ public class GetFeatureForCropping extends ActionHandler {
 	private static final String PARAM_ID = "id";
 
 	private OskariLayerService mapLayerService;
+
+	private String croppingUsername;
+	private String croppingPassword;
 
 	@Override
 	public void handleAction(final ActionParameters params) throws ActionException {
@@ -67,6 +71,9 @@ public class GetFeatureForCropping extends ActionHandler {
 			try {
 
 				HttpURLConnection con = IOHelper.getConnection(wmsUrl);
+				if(hasAuthorization()){
+					IOHelper.setupBasicAuth(con,croppingUsername, croppingPassword);
+				}
 				con.setRequestProperty("Accept-Charset", "UTF-8");
 				final String data = IOHelper.readString(con, "UTF-8");
 
@@ -83,11 +90,17 @@ public class GetFeatureForCropping extends ActionHandler {
 			}
 
 	}
+	
+	private boolean hasAuthorization(){
+		return croppingUsername != null && croppingPassword != null;
+	}
 
 	@Override
 	public void init() {
 		super.init();
 
 		mapLayerService = new OskariLayerServiceIbatisImpl();
+		croppingUsername = PropertyUtil.get("oskari.wfs.cropping.username");
+		croppingPassword = PropertyUtil.get("oskari.wfs.cropping.password");
 	}
 }
