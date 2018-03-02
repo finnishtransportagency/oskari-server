@@ -97,6 +97,13 @@ public class OGCServices {
 	 * 
 	 * @param download
 	 *            download details
+	 * @param geometryColumnName
+	 * 			  name of the geometry column in a downloadable layer, configured in layer attributes
+	 * @param cropGeomColumn
+	 * 			  name of the geometry column in a cropping layer, configured in layer attributes
+	 * @param uniqueColumn
+	 * 			  name of a column in a cropping layer, that contains an unique value such as an id. Configured in layer attributes
+	 *            
 	 */
 
 	public static String getPluginFilter(JSONObject download) throws JSONException {
