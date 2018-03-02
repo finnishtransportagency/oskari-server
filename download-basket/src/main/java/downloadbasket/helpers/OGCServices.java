@@ -30,7 +30,7 @@ public class OGCServices {
 	private static final String KEY_LAYER = "layer";
 	private static final String KEY_LAYER_ID = "id";
 	private static final String KEY_GEOMETRY_COLUMN = "geometryColumn";
-	private static final String KEY_GEOMETRY_COLUMN_NAME = "geometryColumnName";
+	private static final String KEY_GEOMETRY_COLUMN_NAME = "geometry";
 	private static final String KEY_LAYER_NAME = "layerName";
 	private static final String KEY_UNIQUE_COLUMN= "uniqueColumn";
 	private static final String KEY_UNIQUE_VALUE = "uniqueValue";
