@@ -109,11 +109,15 @@ public class OGCServices {
 				String uniqueColumn = identifier.getString("uniqueColumn");
 				String uniqueValue = identifier.getString("uniqueValue");
 				String cropGeomColumn = identifier.getString("geometryName");
-				String altCropGeomColumn = PropertyUtil.get("oskari.wfs.cropping.geometry.column.name");
+				String layerCropGeomColumn = PropertyUtil.get("cropattavan tason attribuuteista cropGeomColumn");
 				String filterColumnType = identifier.getString("geometryColumn");
 				xsw.writeStartElement("Intersects");
 				xsw.writeStartElement("PropertyName");
-				xsw.writeCharacters(altCropGeomColumn);
+				if (layerCropGeomColumn != null && !layerCropGeomColumn.trim().isEmpty()){
+					xsw.writeCharacters(layerCropGeomColumn);
+				} else {
+				xsw.writeCharacters(cropGeomColumn);
+				}
 				xsw.writeEndElement();
 				xsw.writeStartElement("Function");
 				xsw.writeAttribute("name", "querySingle");
