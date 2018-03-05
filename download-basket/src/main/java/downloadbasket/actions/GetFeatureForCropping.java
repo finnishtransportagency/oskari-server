@@ -73,7 +73,7 @@ public class GetFeatureForCropping extends ActionHandler {
 
 				HttpURLConnection con = IOHelper.getConnection(wmsUrl);
 				if(hasAuthorization()){
-					IOHelper.setupBasicAuth(con,croppingUsername, croppingPassword);
+					IOHelper.setupBasicAuth(con, oskariLayer.getUsername(), oskariLayer.getPassword());
 				}
 				con.setRequestProperty("Accept-Charset", "UTF-8");
 				final String data = IOHelper.readString(con, "UTF-8");
@@ -101,7 +101,5 @@ public class GetFeatureForCropping extends ActionHandler {
 		super.init();
 
 		mapLayerService = new OskariLayerServiceIbatisImpl();
-		croppingUsername = PropertyUtil.get("oskari.wfs.cropping.username");
-		croppingPassword = PropertyUtil.get("oskari.wfs.cropping.password");
 	}
 }
