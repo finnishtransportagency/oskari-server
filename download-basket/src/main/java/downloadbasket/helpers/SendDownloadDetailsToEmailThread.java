@@ -267,7 +267,8 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 			d = d.replaceAll("\\{LINEBREAK\\}", "<br/>");
 			htmlFooter.append(d);
 			txtFooter.append(dd);
-			htmlFooter.append("<a href=\"" + (PropertyUtil.get("oskari.wfs.download.email.datadescription_link")) + "\">" + url + "</a>");
+			String link = PropertyUtil.get("oskari.wfs.download.email.datadescription_link", "");
+			htmlFooter.append("<a href=\"" + link + "\">" + link + "</a>");
 			txtFooter.append(PropertyUtil.get("oskari.wfs.download.email.datadescription_link", ""));
 
 			String htmlFullMessage = "<html>" + htmlHeader.toString() + htmlMsg.toString() + htmlFooter.toString()
