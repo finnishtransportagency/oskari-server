@@ -278,7 +278,7 @@ public class SendDownloadDetailsToEmailThread implements Runnable {
 			txtFooter.append("\n\n");
 			
 			String g = PropertyUtil.get("oskari.wfs.download.email.message.thankyou", "");
-			String gg = d.replaceAll("\\{LINEBREAK\\}", "\n");
+			String gg = g.replaceAll("\\{LINEBREAK\\}", "\n");
 			g = g.replaceAll("\\{LINEBREAK\\}", "<br/>");
 			htmlFooter.append(g);
 			txtFooter.append(gg);
