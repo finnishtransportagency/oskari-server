@@ -6,7 +6,7 @@ package fi.nls.oskari.spring.security.saml;
 
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
-import fi.nls.oskari.spring.EnvHelper;
+import fi.nls.oskari.spring.SpringEnvHelper;
 import fi.nls.oskari.spring.security.OskariLoginFailureHandler;
 import fi.nls.oskari.util.PropertyUtil;
 import org.apache.commons.httpclient.HttpClient;
@@ -31,8 +31,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.annotation.web.servlet.configuration.EnableWebMvcSecurity;
 import org.springframework.security.saml.*;
 import org.springframework.security.saml.context.SAMLContextProviderImpl;
 import org.springframework.security.saml.context.SAMLContextProviderLB;
@@ -52,6 +52,7 @@ import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.net.URL;
@@ -75,9 +76,9 @@ import java.util.*;
  * - Generate new keystore: keytool -genkey -alias oskari -keyalg RSA -keystore oskariSAML.jks -keysize 2048
  * - Add key to keystore: keytool -genkeypair -alias oskariKey -keypass oskariPass -keystore oskariSAML.jks
  */
-@Profile(EnvHelper.PROFILE_LOGIN_SAML)
+@Profile(SpringEnvHelper.PROFILE_LOGIN_SAML)
 @Configuration
-@EnableWebMvcSecurity
+@EnableWebSecurity
 @EnableGlobalMethodSecurity(securedEnabled = true)
 @ImportResource("classpath:/saml/samlBindings.xml")
 public class OskariSAMLSecurityConfig extends WebSecurityConfigurerAdapter {
@@ -449,7 +450,9 @@ public class OskariSAMLSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
-                .csrf().disable()
+                .csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse());
+                //.ignoringAntMatchers("/saml/**");
+        http
                 .httpBasic()
                 .authenticationEntryPoint(samlEntryPoint());
 

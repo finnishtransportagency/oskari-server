@@ -1,5 +1,101 @@
 # Release Notes
 
+## 1.50.0
+
+Adds Jetty 9 support for oskari-server.
+
+Note! This version is no longer compatible with Jetty 8. See migration notes!
+
+## 1.49.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/13?closed=1
+
+- JSP-files modified to match the new frontend build. See migrationguide for details.
+- search-service-nls removed from oskari-server as it's adapters for NLS Finland specific search channels. See migrationguide for details. 
+- Added initial support for vectortile based layers
+- URLencoding added for some outgoing requests to improve parameters handling
+- Improved SearchChannel.isValidSearchTerm() error handling so single erratic search channel doesn't prevent search results from showing.
+- Applications now halt on startup if migrations are not successfully completed. You can use the old functionality (force startup after bad migration) by having db.ignoreMigrationFailures=true on oskari-ext.properties.
+- Statistical regionsets that are hosted as resource-files can now have numeric IDs and are read as UTF-8 to support wider range of characters
+- The server now filters out statistical indicators without names so the UI doesn't list empty/undefined indicators.
+- Error handling improved for CSW metadata parsing
+- Customized labels fixed for myplaces when a new/empty database is populated
+- Fix an issue with XML-parsing when Xalan library is in the classpath (For example SAML has Xalan)
+- Fix for layer group matching on database populator/layers now get proper groups
+- Removed "startup" info for bundles from database. All required bundles now have to be included in the frontend build.
+- oskari-server now has a new "example" app that replaces the previous "sample" app to make it clearer it's an example that can be used to demo the software, but will change in releases so you shouldn't use it as your own geoportal if you wish to have control over content and/or functionalities included in it.
+- There's a new URL parameter for skipping the guided tour: showIntro=false
+- Print-functionality now supports ArcGIS REST raster layers.
+- PropertyUtil.getNecessary() now throws NoSuchElementException instead of plain RuntimeException so misconfigurations are easier to separate from actual errors.
+- Library updates
+
+## 1.48.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/11?closed=1
+
+- A new flag for "internal layers" has been added for map layers. Internal layers are not sent to the frontend in map layer listings.
+   Baselayers for user generated content and layers for statistical regional divisions have been flagged as "internal".
+- "Global" forced proxy: mapfull config and GetHierarchicalMapLayerGroups action route now support a flag to force all layers to be proxied via oskari-server with forceProxy=true
+- Scale line calculation in printouts (PDF) has been corrected
+- Added cross-site request forgery protection (login/logout and any POST-requests need to include a token).
+    Note! Any customized JSP pages might need to be modified to include the token.
+- jQuery has been updated to 3.3.1 from 1.10.2. 
+    The old version works as well but remember to update the script tag on any customized JSP.
+- Printout now supports user generated content layers (my places, userlayer, analysis)
+- Improved security for user generated statistical datasets. 
+- User registration now shows the users username on password reset page.
+- Axis order issue has been fixed on MyPlaces WFS-T payload (previously features could end up with the wrong axis order on certain map projections).
+- Regional divisions for statistical map that are used from resource-files (not from WFS-service) now support different map projections.
+
+## 1.47.1
+
+Fix for determining coordinate systems when importing userlayers/imported datasets.
+
+## 1.47.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/8?closed=1
+
+- Migration from OpenLayers 2 to OpenLayers 4 (see MigrationGuide.md)
+- Improvements to userlayer/imported datasets handling
+- Statistical maps PXWeb adapter improvements
+- Statistical datasource/indicator listings now include regionset and time-variable metadata where available
+- Statistical maps error handling improvements
+- Layer order modification in hierarchical layers have been fixed
+- GetAppSetup can now include common urls as environmental metadata (like login/register) configured in oskari-ext.properties
+- Maplayer capabilities caching improvements
+- Added Admin route for flushing caches (/action?action_route=Cache&name=[cache name])
+- Domain check for published maps is now case-insensitive
+- Added server functionalities for handling user generated statistical indicators
+- Print functionality now handles layers that require credentials properly
+- Saving a view/state of the geoportal now uses the current view as base instead of the system default (Fixes an issue with projection support and saving views)
+- Timeseries control can now be included in embedded maps
+- Added a concept of "internal layers" that are part of oskari_maplayer table, but are not intended for public view (like baselayers for my places etc)
+- Clean up deprecated code
+
+## 1.46.2
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/10?closed=1
+
+- Imported dataset/userlayer coverage/extent is now transformed properly for embedded maps. Fixes an issue where the layer was immediately hidden by the frontend on embedded map.
+- Fixed an issue where layer/group sorting order wasn't saved properly on the hierarchical layer listing admin functions
+- Added more detailed ordering information for layers as hierarchical layer listing. Layers and groups can now be sorted as a mixed set instead of subgroups always being before any layers in the group. 
+
+## 1.46.1
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/9?closed=1
+
+- Fixed secure flag so unsecure services (e.g. WMS) are proxied like before on secured Oskari instances
+- GetHierarchicalMapLayerGroups action route response changed to return layers as a flat array beside the groups structure
+- Layers can now belong to multiple groups (previously caused layer listing to fail) 
+- Userlayer/dataset import extent information is now properly transformed so coverage area can be sent for the frontend
+- Appsetups without mapfull.conf.mapOptions (relying on defaults) couldn't be used to publish maps. MapOptions config is now optional for publishing.
+- Fixed multiple issues for adding, editing and deleting dataprovider/groups via the admin user interface (both hierarchichal admin and the classical one work now).
+- Layer ids are now always used in layer JSON sent to the frontend (previously it could be an "external id" when configured)
+- oskari_maplayer no longer has the external_id column. It has been moved to another table, made unique and only the
+ mapLayers URL-parameter handling cares about it anymore. Migration for database have been provided to replace external ids in 
+ mapfull.state.selectedLayers and configs for BackgroundLayerSelectionPlugin and LayerSelectionPlugin.
+- PermissionService changed to return permissions as a Set instead of a List
+
 ## 1.46.0
 
 For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/7?closed=1

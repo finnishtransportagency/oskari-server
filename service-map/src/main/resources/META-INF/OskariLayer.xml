@@ -16,6 +16,7 @@
         <parameter property="parentId" jdbcType="INTEGER"  javaType="int" />
         <parameter property="type" />
         <parameter property="baseMap" />
+        <parameter property="internal" />
         <parameter property="dataproviderId" />
 
         <parameter property="name" />
@@ -60,6 +61,7 @@
     <parameterMap id="LayerUpdateParameter" class="OskariLayer"> <!--  extends="OskariLayer.LayerInsertParameter" -->
         <parameter property="parentId" />
         <parameter property="baseMap" />
+        <parameter property="internal" />
         <parameter property="dataproviderId" />
 
         <parameter property="name" />
@@ -107,9 +109,9 @@
         SELECT
         l.id,
         l.parentId,
-        l.externalId,
         l.type,
         l.base_map,
+        l.internal,
         l.dataprovider_id,
 
         l.name,
@@ -142,7 +144,6 @@
 
         l.created,
         l.updated,
-        gl.order_number,
 
         l.capabilities_last_updated,
         l.capabilities_update_rate_sec
@@ -150,7 +151,6 @@
         FROM
         oskari_maplayer l
         LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
         WHERE
         l.id = #id# OR l.parentId = #id#
         ORDER BY l.parentId ASC
@@ -164,9 +164,9 @@
         SELECT
         l.id,
         l.parentId,
-        l.externalId,
         l.type,
         l.base_map,
+        l.internal,
         l.dataprovider_id,
 
         l.name,
@@ -199,7 +199,6 @@
 
         l.created,
         l.updated,
-        gl.order_number,
 
         l.capabilities_last_updated,
         l.capabilities_update_rate_sec
@@ -207,70 +206,11 @@
         FROM
         oskari_maplayer l 
         LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
         WHERE
         l.parentId = #id#
 
     </select>
 
-    <select id="findByExternalId"
-            parameterClass="String"
-            resultClass="java.util.HashMap">
-
-
-        SELECT
-        l.id,
-        l.parentId,
-        l.externalId,
-        l.type,
-        l.base_map,
-        l.dataprovider_id,
-
-        l.name,
-        l.url,
-        l.locale,
-
-        l.opacity,
-        l.style,
-        l.minscale,
-        l.maxscale,
-
-        l.legend_image,
-        l.metadataId,
-
-        l.params,
-        l.options,
-        l.attributes,
-        l.capabilities,
-
-        l.gfi_xslt,
-        l.gfi_type,
-        l.gfi_content,
-        l.realtime,
-        l.refresh_rate,
-        l.username,
-        l.password,
-        l.version,
-        l.srs_name,
-        m.wkt as geom,
-
-        l.created,
-        l.updated,
-        gl.order_number,
-
-        l.capabilities_last_updated,
-        l.capabilities_update_rate_sec
-
-        FROM
-        oskari_maplayer l 
-        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
-        WHERE
-        l.externalId = #id#
-        AND l.parentId = -1
-
-    </select>
-    
     <select id="findByUuId"
             parameterClass="String"
             resultClass="java.util.HashMap">
@@ -279,9 +219,9 @@
         SELECT
         l.id,
         l.parentId,
-        l.externalId,
         l.type,
         l.base_map,
+        l.internal,
         l.dataprovider_id,
 
         l.name,
@@ -314,7 +254,6 @@
 
         l.created,
         l.updated,
-        gl.order_number,
 
         l.capabilities_last_updated,
         l.capabilities_update_rate_sec
@@ -322,7 +261,6 @@
         FROM
         oskari_maplayer l 
         LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
         WHERE
         m.metadataid = #id#
         AND l.parentId = -1
@@ -337,9 +275,9 @@
         SELECT
         l.id,
         l.parentId,
-        l.externalId,
         l.type,
         l.base_map,
+        l.internal,
         l.dataprovider_id,
 
         l.name,
@@ -372,7 +310,6 @@
 
         l.created,
         l.updated,
-        gl.order_number,
 
         l.capabilities_last_updated,
         l.capabilities_update_rate_sec
@@ -380,7 +317,6 @@
         FROM
         oskari_maplayer l 
         LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
         WHERE
         l.name = #name#
         AND  l.url = #url#
@@ -394,9 +330,9 @@
     SELECT
     l.id,
     l.parentId,
-    l.externalId,
     l.type,
     l.base_map,
+    l.internal,
     l.dataprovider_id,
 
     l.name,
@@ -429,7 +365,6 @@
 
     l.created,
     l.updated,
-    gl.order_number,
 
     l.capabilities_last_updated,
     l.capabilities_update_rate_sec
@@ -437,7 +372,6 @@
     FROM
     oskari_maplayer l
     LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-    LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
     <dynamic>
         <isNotEmpty property="id">
             WHERE
@@ -456,9 +390,9 @@
         SELECT
         l.id,
         l.parentId,
-        l.externalId,
         l.type,
         l.base_map,
+        l.internal,
         l.dataprovider_id,
 
         l.name,
@@ -491,7 +425,6 @@
 
         l.created,
         l.updated,
-    	gl.order_number,
 
         l.capabilities_last_updated,
         l.capabilities_update_rate_sec
@@ -499,8 +432,6 @@
         FROM
         oskari_maplayer l
         LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-    	LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
-
         <dynamic prepend="WHERE">
             <isNotEmpty  property="intList" prepend="OR">
                 l.id in
@@ -508,12 +439,6 @@
                     #intList[]#
                 </iterate>
 
-            </isNotEmpty>
-            <isNotEmpty  property="strList" prepend="OR">
-                l.externalId in
-                <iterate property="strList" open="(" close=")" conjunction=",">
-                    #strList[]#
-                </iterate>
             </isNotEmpty>
             <isNotEmpty property="parentIntList" prepend="OR">
                 l.parentId in
@@ -532,9 +457,9 @@
     SELECT
     l.id,
     l.parentId,
-    l.externalId,
     l.type,
     l.base_map,
+    l.internal,
     l.dataprovider_id,
 
     l.name,
@@ -567,7 +492,6 @@
 
     l.created,
     l.updated,
-   	gl.order_number,
 
     l.capabilities_last_updated,
     l.capabilities_update_rate_sec
@@ -575,7 +499,6 @@
     FROM
     oskari_maplayer l
     LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
-    LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
     WHERE capabilities_update_rate_sec > 0
     ORDER BY l.parentId ASC
 </select>
@@ -593,6 +516,7 @@
             parentId,
             type,
             base_map,
+            internal,
             dataprovider_id,
 
             name,
@@ -631,30 +555,15 @@
             capabilities_last_updated,
             capabilities_update_rate_sec)
 
-        values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     </statement>
     
-    <update id="updateOrder" parameterClass="java.util.HashMap">
-        UPDATE oskari_maplayer_group_link
-        SET    order_number = #orderNumber#
-        WHERE maplayerid = #layerId#
-        AND groupid = #groupId#
-    </update>
-    
-    <update id="updateGroup" parameterClass="java.util.HashMap">
-        update oskari_maplayer_group_link set
-            groupid = #newGroupId#
-        where 
-        	groupid = #oldGroupId#
-        	and
-        	maplayerid = #layerId#
-    </update>
-
     <statement id="update" parameterMap="LayerUpdateParameter">
         UPDATE oskari_maplayer
         SET
         parentId = ?,
         base_map = ?,
+        internal = ?,
         dataprovider_id = ?,
 
         name = ?,

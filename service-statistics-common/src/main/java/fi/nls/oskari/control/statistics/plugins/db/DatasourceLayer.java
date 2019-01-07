@@ -1,6 +1,13 @@
 package fi.nls.oskari.control.statistics.plugins.db;
 
+import fi.nls.oskari.domain.Role;
+import fi.nls.oskari.domain.User;
+import fi.nls.oskari.util.PropertyUtil;
 import org.json.JSONObject;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * This is the value object for the statistical datasource layer
@@ -28,6 +35,12 @@ public class DatasourceLayer {
      */
     private JSONObject config;
 
+    // {"fi":{"name":"Pohjois-Karjalan maakuntakaava: Aluevaraukset"}}} from oskari_maplayer.locale
+    // set by mybatis mapper
+    private JSONObject locale;
+
+    private Set<Long> allowedRoles = new HashSet<>();
+
     public long getDatasourceId() {
         return datasourceId;
     }
@@ -48,7 +61,7 @@ public class DatasourceLayer {
         if(config == null) {
             return null;
         }
-        return config.optString(key);
+        return config.optString(key, null);
     }
     public JSONObject getConfig() {
         return config;
@@ -56,5 +69,44 @@ public class DatasourceLayer {
 
     public void setConfig(JSONObject config) {
         this.config = config;
+    }
+
+    public void addRoles(Collection<Long> roleIds) {
+        allowedRoles.addAll(roleIds);
+    }
+
+    public boolean hasPermission(User user) {
+        return user.getRoles().stream()
+                .map(Role::getId)
+                .anyMatch(id -> allowedRoles.contains(id));
+    }
+
+    public String getTitle(String lang) {
+        JSONObject langJSON = getLocalized(lang);
+        if(langJSON == null) {
+            return null;
+        }
+        return langJSON.optString("name");
+    }
+    private JSONObject getLocalized(String lang) {
+        if(locale == null || locale.length() == 0) {
+            return null;
+        }
+        if (lang == null) {
+            lang = PropertyUtil.getDefaultLanguage();
+        }
+        final JSONObject value = locale.optJSONObject(lang);
+        if(value != null) {
+            return value;
+        }
+
+        if (!lang.equalsIgnoreCase(PropertyUtil.getDefaultLanguage())) {
+            final JSONObject defaultValue = locale.optJSONObject(PropertyUtil.getDefaultLanguage());
+            if(defaultValue != null) {
+                return defaultValue;
+            }
+        }
+        final String randomLang = (String) locale.keys().next();
+        return locale.optJSONObject(randomLang);
     }
 }

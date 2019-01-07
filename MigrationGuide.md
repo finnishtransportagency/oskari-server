@@ -1,5 +1,108 @@
 # Migration guide
 
+## 1.50.0
+
+This release requires Jetty 9 to be used with the transport webapp. Jetty 8 no longer works as the CometD library has been updated.
+For migrating from the previous Jetty 8 package to the new Jetty 9 package you can download the new Jetty bundle from oskari.org. 
+The migration is pretty straightforward:
+
+1) Download the new Jetty 9 package from oskari.org/download
+
+2) Move any customized configuration from {Jetty 8}/start.ini to {Jetty 9}/oskari-server/start.d/oskari.ini
+
+3) Build your app with Oskari 1.50.0+ version and replace the war-files under {Jetty 9}/oskari-server/webapps
+
+- Note! Update the web.xml under {your server extension}/webapp-transport/src/main/webapp/WEB-INF/web.xml to
+ match the changes in {oskari-server}/webapp-transport/src/main/webapp/WEB-INF/web.xml
+- Namely the servlet-class for transport has changed from org.cometd.server.CometdServlet to org.cometd.server.CometDServlet
+ as seen here https://github.com/oskariorg/oskari-server-extension-template/commit/88ffa45bd649b1967f07dff0470e2fd044f7a35a
+
+4) Copy everything under {Jetty 8}/resources to {Jetty 9}/oskari-server/resources
+5) Start Jetty 9 with:
+- work directory as {Jetty 9}/oskari-server
+- Run:
+
+    java -jar ../jetty-distribution-9.4.12.v20180830/start.jar
+
+See https://github.com/oskariorg/sample-configs/blob/master/jetty-9/Howto.md and oskari.org for more details.
+
+You will also need to update the frontend for Oskari 1.50.0+ as the CometD client library has been updated and
+ the old one doesn't work with the new server or vice versa. 
+
+## 1.49.0
+
+### JSP-files modified to match the new frontend build
+
+There are some changes required for any customized JSP-pages:
+
+- jQuery is now part of oskari.min.js - remove script tag for jQuery
+- bundles/bundle.js has been removed - remove reference to it
+- resources/portal.css and forms.css are now part of oskari.min.css - remove references to them
+- app/overwritten.css is now part of oskari.min.css - remove reference to it
+- the "preloaded" variable is now always true - remove any logic using it
+
+The frontend code is now always minified/bundled as oskari.min.js even on development environment.
+See the example app in oskari-server for template JSP in custom installs.
+
+### search-service-nls
+
+Due to being specific to NLS Finland services the code has been moved to nlsfi/oskari-server-extras#1 and but it's still
+ available in oskari.org/nexus. For drop-in replacement change:
+
+     <dependency>
+        <groupId>fi.nls.oskari.service</groupId>
+        <artifactId>oskari-search-nls</artifactId>
+        <version>${oskari.version}</version>
+    </dependency>
+
+to:
+
+     <dependency>
+        <groupId>fi.nls.oskari.extras</groupId>
+        <artifactId>oskari-search-nls</artifactId>
+        <version>2.1</version>
+    </dependency>
+
+## 1.48.0
+
+### Changes to JSP-pages
+
+#### Cross-site request forgery protection
+
+Security features in Oskari has been improved by enabling cross-site request forgery protection.
+Any requests done with HTTP-methods other than GET is required to include a token as header or parameter to be accepted. 
+
+There are some changes required for any customized JSP-pages:
+
+- Logout must be done with HTTP POST (https://github.com/oskariorg/oskari-server/commit/3aecfdd6c983c840e4d268f32d85c010041c5752)
+- Any additional customized pages/calls need to include the token for example user registration (https://github.com/oskariorg/oskari-server/commit/9d7440f08b73c8d033b8eab9562a2ca1ed036718)
+
+Oskari frontend code will automatically include the token by default on any action route calls made by it
+ (https://github.com/oskariorg/oskari-frontend/blob/e42481ac6c4bf273cb1c55aa0857cb3b94482703/src/oskari.app.js#L9-L31).
+Most of the action routes (ones doing write operations) have been changed to only respond to non-GET requests(POST/PUT/DELETE).
+
+#### jQuery update
+
+The default jQuery version has been updated from 1.10.2 to 3.3.1 (https://github.com/oskariorg/oskari-server/commit/0dc08057a91282f09999f7d21f29d935b2664ece).
+The functionality in oskari-frontend has been modified to work with the new version, but if you have customized bundles
+ you might want to take a look at the official upgrade guide: https://jquery.com/upgrade-guide/3.0/
+
+Here are most of the changes done for oskari-frontend: https://github.com/oskariorg/oskari-frontend/pull/468 
+
+## 1.47.0
+
+### AppSetup migration (OpenLayers 4)
+
+Oskari 1.47.0 drops support for OpenLayers 2 (https://github.com/oskariorg/oskari-docs/issues/63). Existing AppSetups
+ of type 'DEFAULT' and 'USER' are automatically migrated to use the OpenLayers 4 implementations of the bundles. 
+The other types (PUBLISH and PUBLISHED) have been using OL 4 for a long time already and don't need the migration.
+
+Note! Any app using custom view types needs to make an app-specific migration for the custom types. 
+Copy-pasting the migration (content-resources/src/main/resources/flyway/oskari/V1_47_3__migrate_appsetup_to_ol4.sql) and
+ adding the types to the where-clause at the beginning should suffice: 
+ 
+    type IN ('DEFAULT', 'USER') AND -- is right view type
+
 ## 1.46.0
 
 ### UserLayer to separate modules

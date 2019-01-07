@@ -43,6 +43,22 @@ public class AsyncImageLoader {
             case OskariLayer.TYPE_WFS:
                 images.add(new CommandLoadImageWFS(layer, width, height, bbox).queue());
                 break;
+            case "myplaces":
+                images.add(new CommandLoadImageMyPlaces(request.getUser(),
+                        layer, width, height, bbox, srsName).queue());
+                break;
+            case OskariLayer.TYPE_USERLAYER:
+                images.add(new CommandLoadImageUserLayer(request.getUser(),
+                        layer, width, height, bbox, srsName).queue());
+                break;
+            case OskariLayer.TYPE_ANALYSIS:
+                images.add(new CommandLoadImageAnalysis(request.getUser(),
+                        layer, width, height, bbox, srsName).queue());
+                break;
+            case OskariLayer.TYPE_ARCGIS93:
+                images.add(new CommandLoadImageArcGISREST(layer,
+                        width, height, bbox, srsName).queue());
+                break;
             default:
                 throw new IllegalArgumentException("Invalid layer type!");
             }

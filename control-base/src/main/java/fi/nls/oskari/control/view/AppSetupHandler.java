@@ -57,7 +57,7 @@ public class AppSetupHandler extends RestActionHandler {
     private static final boolean VIEW_ACCESS_UUID = PropertyUtil.getOptional(PROPERTY_VIEW_UUID, true);
     // Simple bundles don't require extra processing
     private static final Set<String> SIMPLE_BUNDLES = ConversionHelper.asSet(
-            ViewModifier.BUNDLE_INFOBOX, ViewModifier.BUNDLE_TOOLBAR,
+            ViewModifier.BUNDLE_INFOBOX, ViewModifier.BUNDLE_TOOLBAR, ViewModifier.BUNDLE_TIMESERIES,
             ViewModifier.BUNDLE_PUBLISHEDGRID, ViewModifier.BUNDLE_FEATUREDATA2,
             ViewModifier.BUNDLE_COORDINATETOOL, ViewModifier.BUNDLE_STATSGRID, ViewModifier.BUNDLE_FEEDBACKSERVICE);
 
@@ -379,7 +379,9 @@ public class AppSetupHandler extends RestActionHandler {
         }
         JSONObject mapOptions = publisherView.getMapOptions();
         if (mapOptions == null) {
-            throw new ActionParamsException("Could not get the mapOptions from appsetup for uuid " + publisherUUID);
+            LOG.info("Could not get the mapOptions from appsetup for uuid", publisherUUID,
+                    "the embedded maps will use defaults from frontend code");
+            mapOptions = new JSONObject();
         }
         JSONHelper.putValue(mapOptions, KEY_CROSSHAIR, crosshairEnabled(input));
         JSONHelper.putValue(mapOptions, KEY_STYLE, style);

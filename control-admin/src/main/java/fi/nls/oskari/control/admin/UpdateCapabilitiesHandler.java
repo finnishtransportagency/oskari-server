@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import fi.nls.oskari.control.*;
+import fi.nls.oskari.util.ConversionHelper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -13,11 +15,6 @@ import org.oskari.service.util.ServiceFactory;
 
 import fi.mml.map.mapwindow.util.OskariLayerWorker;
 import fi.nls.oskari.annotation.OskariActionRoute;
-import fi.nls.oskari.control.ActionConstants;
-import fi.nls.oskari.control.ActionException;
-import fi.nls.oskari.control.ActionHandler;
-import fi.nls.oskari.control.ActionParameters;
-import fi.nls.oskari.control.ActionParamsException;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.map.layer.OskariLayerService;
 import fi.nls.oskari.map.view.ViewService;
@@ -45,7 +42,7 @@ import fi.nls.oskari.util.ResponseHelper;
  * Both "success" and "error" might be empty
  */
 @OskariActionRoute("UpdateCapabilities")
-public class UpdateCapabilitiesHandler extends ActionHandler {
+public class UpdateCapabilitiesHandler extends RestActionHandler {
 
     private OskariLayerService layerService;
     private CapabilitiesCacheService capabilitiesCacheService;
@@ -84,7 +81,7 @@ public class UpdateCapabilitiesHandler extends ActionHandler {
     }
 
     @Override
-    public void handleAction(ActionParameters params) throws ActionException {
+    public void handlePost(ActionParameters params) throws ActionException {
         params.requireAdminUser();
 
         String layerId = params.getHttpParam(ActionConstants.KEY_ID);
@@ -103,11 +100,20 @@ public class UpdateCapabilitiesHandler extends ActionHandler {
         if (layerId == null) {
             return layerService.findAll();
         }
-        OskariLayer layer = layerService.find(layerId);
+        int id = getId(layerId);
+        OskariLayer layer = layerService.find(id);
         if (layer == null) {
-            throw new ActionParamsException("Unknown layer id:" + layerId);
+            throw new ActionParamsException("Unknown layer id:" + id);
         }
         return Collections.singletonList(layer);
+    }
+
+    private int getId(String layerId) throws ActionParamsException {
+        try {
+            return Integer.parseInt(layerId);
+        } catch (NumberFormatException e) {
+            throw new ActionParamsException("Layer id is not a number:" + layerId);
+        }
     }
 
     private Set<String> getSystemCRSs() throws ActionException {
@@ -139,7 +145,7 @@ public class UpdateCapabilitiesHandler extends ActionHandler {
             if (layerId != null && success.length() == 1) {
                 // If this is a update-single-layer request then add the updated information 
                 // Fetch the OskariLayer again to make sure we have all the fields updated in the object
-                OskariLayer layer = layerService.find(layerId);
+                OskariLayer layer = layerService.find(getId(layerId));
                 JSONObject layerJSON = OskariLayerWorker.getMapLayerJSON(layer,
                         params.getUser(),
                         params.getLocale().getLanguage(),
