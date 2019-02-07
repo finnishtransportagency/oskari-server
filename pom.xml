@@ -365,7 +365,7 @@
             <dependency>
                 <groupId>fi.nls.oskari</groupId>
                 <artifactId>servlet-saml-config</artifactId>
-                <version>${fi.nls.oskari.version}</version>
+                <version>1.46.0</version>
             </dependency>
 
             <dependency>
