@@ -4,13 +4,23 @@
     <parent>
         <groupId>fi.nls.oskari</groupId>
         <artifactId>oskari-parent</artifactId>
-        <version>1.46.0</version>
+        <version>1.50.0</version>
     </parent>
     <artifactId>servlet-saml-config</artifactId>
     <packaging>jar</packaging>
     <name>Oskari Map Servlet SAML configuration</name>
 
     <dependencies>
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml</artifactId>
+            <version>2.6.1<version>
+        </dependency>
+        <dependency>
+            <groupId>ca.juliusdavies</groupId>
+            <artifactId>not-yet-commons-ssl</artifactId>
+            <version>0.3.9<version>
+        </dependency>
         <dependency>
             <groupId>fi.nls.oskari</groupId>
             <artifactId>servlet-map</artifactId>
