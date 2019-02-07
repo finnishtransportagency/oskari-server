@@ -14,12 +14,12 @@
         <dependency>
             <groupId>org.opensaml</groupId>
             <artifactId>opensaml</artifactId>
-            <version>2.6.1<version>
+            <version>2.6.1</version>
         </dependency>
         <dependency>
             <groupId>ca.juliusdavies</groupId>
             <artifactId>not-yet-commons-ssl</artifactId>
-            <version>0.3.9<version>
+            <version>0.3.9</version>
         </dependency>
         <dependency>
             <groupId>fi.nls.oskari</groupId>
