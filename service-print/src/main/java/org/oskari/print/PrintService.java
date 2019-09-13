@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.oskari.print.request.PrintLayer;
 import org.oskari.print.request.PrintRequest;

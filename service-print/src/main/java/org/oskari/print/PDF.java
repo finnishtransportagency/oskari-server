@@ -4,6 +4,9 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -96,7 +99,7 @@ public class PDF {
 
     private static final double[] SCALE_LINE_DISTANCES_METRES = new double[24];
 
-    private static final String LOGO_PATH_DEFAULT = "/img/logo.png";
+    private static final String LOGO_PATH_DEFAULT = "logo.png";
     private static final String LOGO_PATH = PropertyUtil.get("print.logo.path", LOGO_PATH_DEFAULT);
 
     static {
@@ -210,20 +213,34 @@ public class PDF {
         }
 
         BufferedImage logo = null;
-        try (InputStream in = PDF.class.getResourceAsStream(LOGO_PATH)) {
-            if (in == null) {
-                LOG.debug("Logo file not found");
+
+        // Try file
+        try (InputStream in = Files.newInputStream(Paths.get(LOGO_PATH))) {
+            logo = ImageIO.read(new BufferedInputStream(in));
+        } catch (NoSuchFileException e) {
+            LOG.debug("Logo file " + LOGO_PATH + " does not exist");
+        } catch (IOException e) {
+            LOG.warn(e, "Failed to read logo from file");
+        }
+
+        // File didn't work, try resources file
+        if (logo == null) {
+            try (InputStream in = PDF.class.getResourceAsStream(LOGO_PATH)) {
+                if (in == null) {
+                    LOG.debug("Resource file " + LOGO_PATH + " does not exist");
+                    return;
+                }
+                logo = ImageIO.read(new BufferedInputStream(in));
+            } catch (IOException e) {
+                LOG.warn(e, "Failed to read logo from resource " + LOGO_PATH);
                 return;
             }
-            logo = ImageIO.read(new BufferedInputStream(in));
-        } catch (IOException e) {
-            LOG.warn(e, "Failed to read logo");
-            return;
+            if (logo == null) {
+                LOG.info("Couldn't read logo with ImageIO");
+                return;
+            }
         }
-        if (logo == null) {
-            LOG.info("Couldn't read logo with ImageIO");
-            return;
-        }
+
         try {
             PDImageXObject img = LosslessFactory.createFromImage(doc, logo);
             float x = OFFSET_LOGO_LEFT;
@@ -274,7 +291,7 @@ public class PDF {
             return;
         }
 
-        double mppt = mppx * Units.PDF_DPI / Units.OGC_DPI;
+        double mppt = mppx * Units.OGC_DPI / Units.PDF_DPI;
 
         // Draw atleast 50pt
         double minDistance = mppt * 50;
@@ -287,14 +304,8 @@ public class PDF {
             }
         }
 
-        String distanceStr;
-        if (distance > 1000) {
-            distanceStr = Math.round(distance / 1000) + " km";
-        } else {
-            distanceStr = Math.round(distance) + " m";
-        }
-
         double pt = distance / mppt;
+
 
         // PDF (and PDFBox) uses single precision floating point numbers
         float x1 = (float) OFFSET_SCALE_LEFT;
@@ -302,15 +313,31 @@ public class PDF {
         float x2 = (float) (OFFSET_SCALE_LEFT + pt);
         float y2 = y1 + 10;
 
-        stream.moveTo(x1, y2);
-        stream.lineTo(x1, y1);
-        stream.lineTo(x2, y1);
-        stream.lineTo(x2, y2);
-        stream.stroke();
+        // If scale text is defined then draw scale text.
+        if(request.isScaleText()) {
+            float cx = x1 + ((x2 - x1) / 2);
+            PDFBoxUtil.drawTextCentered(stream, request.getScaleText(),
+                    FONT, FONT_SIZE_SCALE, cx, y1 + 5);
+        }
+        // else force to draw scalebar
+        else {
+            String distanceStr;
+            if (distance > 1000) {
+                distanceStr = Math.round(distance / 1000) + " km";
+            } else {
+                distanceStr = Math.round(distance) + " m";
+            }
 
-        float cx = x1 + ((x2 - x1) / 2);
-        PDFBoxUtil.drawTextCentered(stream, distanceStr,
-                FONT, FONT_SIZE_SCALE, cx, y1 + 5);
+            stream.moveTo(x1, y2);
+            stream.lineTo(x1, y1);
+            stream.lineTo(x2, y1);
+            stream.lineTo(x2, y2);
+            stream.stroke();
+
+            float cx = x1 + ((x2 - x1) / 2);
+            PDFBoxUtil.drawTextCentered(stream, distanceStr,
+                    FONT, FONT_SIZE_SCALE, cx, y1 + 5);
+        }
     }
 
     private static String getUnits(String srsName) {

@@ -35,6 +35,7 @@ import org.oskari.service.util.ServiceFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by SMAKINEN on 17.8.2015.
@@ -191,13 +192,13 @@ public class PublishPermissionHelper {
             return false;
         }
 
-        final List<String> permissionsList = permissionsService.getResourcesWithGrantedPermissions(
+        final Set<String> permissions = permissionsService.getResourcesWithGrantedPermissions(
                 AnalysisLayer.TYPE, user, Permissions.PERMISSION_TYPE_PUBLISH);
-        LOG.debug("Analysis layer publish permissions", permissionsList);
+        LOG.debug("Analysis layer publish permissions", permissions);
         final String permissionKey = "analysis+"+analysis.getId();
 
-        LOG.debug("PublishPermissions:", permissionsList);
-        boolean hasPermission = permissionsList.contains(permissionKey);
+        LOG.debug("PublishPermissions:", permissions);
+        boolean hasPermission = permissions.contains(permissionKey);
         if (hasPermission) {
             // write publisher name for analysis
             analysisService.updatePublisherName(analysisId, user.getUuid(), user.getScreenname());
@@ -228,16 +229,22 @@ public class PublishPermissionHelper {
 
     private boolean hasRightToPublishLayer(final String layerId, final User user) {
         // layerId might be external so don't use it straight up
-        final OskariLayer layer = layerService.find(layerId);
-        if (layer == null) {
-            LOG.warn("Couldn't find layer with id:", layerId);
+        int id = ConversionHelper.getInt(layerId, -1);
+        if (id == -1) {
+            // invalid id
+            LOG.warn("Invalid layer with id:", layerId);
             return false;
         }
-        final Long id = Long.valueOf(layer.getId());
+        final OskariLayer layer = layerService.find(id);
+        if (layer == null) {
+            LOG.warn("Couldn't find layer with id:", id);
+            return false;
+        }
+        Long permissionId = Long.valueOf(id);
         final List<Long> list = new ArrayList<>();
-        list.add(id);
+        list.add(permissionId);
         final Map<Long, List<Permissions>> map = permissionsService.getPermissionsForLayers(list, Permissions.PERMISSION_TYPE_PUBLISH);
-        List<Permissions> permissions = map.get(id);
+        List<Permissions> permissions = map.get(permissionId);
         boolean hasPermission = permissionsService.permissionGrantedForRolesOrUser(
                 user, permissions, Permissions.PERMISSION_TYPE_PUBLISH);
         if (!hasPermission) {

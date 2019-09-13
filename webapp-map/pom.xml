@@ -4,7 +4,7 @@
     <parent>
         <groupId>fi.nls.oskari</groupId>
         <artifactId>oskari-parent</artifactId>
-        <version>1.46.0</version>
+        <version>1.50.0</version>
     </parent>
 
     <groupId>fi.nls.oskari</groupId>
@@ -20,7 +20,23 @@
             <artifactId>icu4j</artifactId>
             <version>51.1</version>
         </dependency>
-
+             
+        <dependency>
+            <groupId>org.opensaml</groupId>
+            <artifactId>opensaml</artifactId>
+            <version>2.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>ca.juliusdavies</groupId>
+            <artifactId>not-yet-commons-ssl</artifactId>
+            <version>0.3.9</version>
+        </dependency>
+         <dependency>
+            <groupId>xml-apis</groupId>
+            <artifactId>xml-apis</artifactId>
+            <version>1.4.01</version>
+        </dependency>
+             
         <dependency>
             <groupId>fi.nls.oskari</groupId>
             <artifactId>servlet-saml-config</artifactId>
@@ -100,11 +116,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-search-nls</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
@@ -113,7 +124,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>2.6</version>
+                <version>3.2.2</version>
             </plugin>
 
             <plugin>

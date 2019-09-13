@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>fi.nls.oskari</groupId>
 		<artifactId>oskari-parent</artifactId>
-        <version>1.46.0</version>
+        <version>1.50.0</version>
 	</parent>
 
     <groupId>fi.nls.oskari.service</groupId>
@@ -84,6 +84,10 @@
             <groupId>javax.servlet</groupId>
             <artifactId>javax.servlet-api</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.geotools</groupId>
+            <artifactId>gt-xml</artifactId>
         </dependency>
     </dependencies>
     <build>

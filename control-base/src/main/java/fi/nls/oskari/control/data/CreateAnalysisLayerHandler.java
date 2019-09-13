@@ -28,6 +28,7 @@ import fi.nls.oskari.permission.domain.Permission;
 import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.UserService;
+import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
@@ -38,7 +39,7 @@ import java.net.URL;
 import java.util.*;
 
 @OskariActionRoute("CreateAnalysisLayer")
-public class CreateAnalysisLayerHandler extends ActionHandler {
+public class CreateAnalysisLayerHandler extends RestActionHandler {
 
     private static final Logger log = LogFactory
             .getLogger(CreateAnalysisLayerHandler.class);
@@ -81,13 +82,22 @@ public class CreateAnalysisLayerHandler extends ActionHandler {
 
     final private static String GEOSERVER_PROXY_BASE_URL = PropertyUtil.getOptional("analysis.baseproxy.url");
 
+    private AnalysisLayer getAggregateLayer(String analyse, String filter1, String filter2,
+                                      String baseUrl, AnalysisLayer analysisLayer, String outputFormat) throws ActionParamsException {
+        try {
+            return analysisParser.parseSwitch2UnionLayer(analysisLayer, analyse, filter1, filter2, baseUrl, outputFormat);
+        } catch (ServiceException e) {
+            throw new ActionParamsException(ERROR_UNABLE_TO_PROCESS_AGGREGATE_UNION, e.getMessage());
+        }
+    }
+
     /**
      * Handles action_route CreateAnalysisLayer
      *
      * @param params Ajax request parameters
      *               **********************************************************************
      */
-    public void handleAction(ActionParameters params) throws ActionException {
+    public void handlePost(ActionParameters params) throws ActionException {
         params.requireLoggedInUser();
 
         final String analyse = params.getRequiredParam(PARAM_ANALYSE, ERROR_ANALYSE_PARAMETER_MISSING);
@@ -114,7 +124,7 @@ public class CreateAnalysisLayerHandler extends ActionHandler {
             // no WPS for merge analysis
             try {
                 analysis = analysisDataService.mergeAnalysisData(
-                    analysisLayer, analyse, params.getUser());
+                        analysisLayer, analyse, params.getUser());
             } catch (ServiceException e) {
                 throw new ActionException(ERROR_UNABLE_TO_MERGE_ANALYSIS_DATA, e);
             }
@@ -242,15 +252,6 @@ public class CreateAnalysisLayerHandler extends ActionHandler {
         ResponseHelper.writeResponse(params, analysisLayerJSON);
     }
 
-    private AnalysisLayer getAggregateLayer(String analyse, String filter1, String filter2,
-                                      String baseUrl, AnalysisLayer analysisLayer, String outputFormat) throws ActionParamsException {
-        try {
-            return analysisParser.parseSwitch2UnionLayer(analysisLayer, analyse, filter1, filter2, baseUrl, outputFormat);
-        } catch (ServiceException e) {
-            throw new ActionParamsException(ERROR_UNABLE_TO_PROCESS_AGGREGATE_UNION, e.getMessage());
-        }
-    }
-
     private AnalysisLayer getAnalysisLayer(JSONObject analyseJson, String filter1, String filter2, String baseUrl,
                                            String uuid) throws ActionParamsException {
         try {
@@ -279,9 +280,9 @@ public class CreateAnalysisLayerHandler extends ActionHandler {
         return featureSet;
     }
 
-    private Resource getSourcePermission(final String layerId, final User user) {
+    private Resource getSourcePermission(final String layerId, final User user) throws ActionParamsException {
         if(layerId == null) {
-            return null;
+            throw new ActionParamsException("Missing source layer id");
         }
 
         if (layerId.startsWith(AnalysisParser.ANALYSIS_LAYER_PREFIX)) {
@@ -316,7 +317,11 @@ public class CreateAnalysisLayerHandler extends ActionHandler {
             return resource;
         }
         // default to usual layer
-        final OskariLayer layer = mapLayerService.find(layerId);
+        int id = ConversionHelper.getInt(layerId, -1);
+        if (id == -1) {
+            throw new ActionParamsException("Invalid id: " + layerId);
+        }
+        final OskariLayer layer = mapLayerService.find(id);
         // copy permissions from source layer to new analysis
         return permissionsService.getResource(Permissions.RESOURCE_TYPE_MAP_LAYER, new OskariLayerResource(layer).getMapping());
     }

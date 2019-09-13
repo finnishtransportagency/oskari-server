@@ -52,6 +52,7 @@ public class GetPrintHandler extends ActionHandler {
     private static final String PARM_SCALE = "pageScale";
     private static final String PARM_LOGO = "pageLogo";
     private static final String PARM_DATE = "pageDate";
+    private static final String PARM_SCALE_TEXT = "scaleText";
 
     private static final String ALLOWED_FORMATS = Arrays.toString(new String[] {
             PrintFormat.PDF.contentType, PrintFormat.PNG.contentType
@@ -112,23 +113,38 @@ public class GetPrintHandler extends ActionHandler {
             throws ActionException {
         PrintRequest request = new PrintRequest();
 
+        request.setUser(params.getUser());
         request.setSrsName(params.getRequiredParam(PARM_SRSNAME));
         request.setResolution(params.getRequiredParamDouble(PARM_RESOLUTION));
         request.setTitle(params.getHttpParam(PARM_TITLE));
         request.setShowLogo(params.getHttpParam(PARM_LOGO, false));
         request.setShowScale(params.getHttpParam(PARM_SCALE, false));
         request.setShowDate(params.getHttpParam(PARM_DATE, false));
-
+        request.setScaleText(params.getHttpParam(PARM_SCALE_TEXT, ""));
         setPagesize(params, request);
         setCoordinates(params.getRequiredParam(PARM_COORD), request);
         setFormat(params.getRequiredParam(PARM_FORMAT), request);
 
         List<PrintLayer> layers = getLayers(params.getRequiredParam(PARM_MAPLAYERS),
                 params.getUser());
+        if(request.isScaleText()) {
+            layers = filterLayersWithSupportOwnScale(layers);
+        }
         request.setLayers(layers);
         setTiles(layers, params.getHttpParam(PARM_TILES));
 
         return request;
+    }
+
+
+    private List<PrintLayer> filterLayersWithSupportOwnScale(List<PrintLayer> layers) {
+        List<PrintLayer> filtered = new ArrayList<>();
+        for (PrintLayer layer : layers) {
+            if (!layer.getType().equals(OskariLayer.TYPE_WMTS)) {
+                filtered.add(layer);
+            }
+        }
+        return filtered;
     }
 
     private void setPagesize(ActionParameters params, PrintRequest request)
@@ -211,8 +227,20 @@ public class GetPrintHandler extends ActionHandler {
 
         List<PrintLayer> printLayers = new ArrayList<>(requestedLayers.length);
         for (LayerProperties requestedLayer : requestedLayers) {
-            OskariLayer oskariLayer = permissionHelper.getLayer(requestedLayer.getId(), user);
-            PrintLayer printLayer = createPrintLayer(oskariLayer, requestedLayer);
+            String layerId = requestedLayer.getId();
+            int id = ConversionHelper.getInt(layerId, -1);
+            PrintLayer printLayer = null;
+            if (id != -1) {
+                OskariLayer oskariLayer = permissionHelper.getLayer(id, user);
+                printLayer = createPrintLayer(oskariLayer, requestedLayer);
+            } else {
+                for (ProxyPrintLayer p : ProxyPrintLayer.values()) {
+                    if (layerId.startsWith(p.prefix)) {
+                        printLayer = createProxyLayer(p, requestedLayer);
+                        break;
+                    }
+                }
+            }
             if (printLayer != null) {
                 printLayers.add(printLayer);
             }
@@ -349,6 +377,32 @@ public class GetPrintHandler extends ActionHandler {
         return arr;
     }
 
+    private PrintLayer createProxyLayer(ProxyPrintLayer p, LayerProperties requestedLayer) {
+        int opacity = requestedLayer.getOpacity() != null ? requestedLayer.getOpacity() : 100;
+        if (opacity <= 0) {
+            // Ignore fully transparent layers
+            LOG.info("Ignoring zero opacity layer:", requestedLayer.getId());
+            return null;
+        }
+
+        int lastUnderscore = requestedLayer.getId().lastIndexOf('_');
+        String layerId = requestedLayer.getId().substring(lastUnderscore + 1);
+        int id = ConversionHelper.getInt(layerId, -1);
+        if (id < 0) {
+            // Ignore layers with negative id
+            LOG.info("Failed to parse integer id from:", requestedLayer.getId());
+            return null;
+        }
+
+        PrintLayer layer = new PrintLayer();
+        layer.setId(id);
+        layer.setType(p.type);
+        layer.setVersion("1.3.0");
+        layer.setName(p.layerName);
+        layer.setOpacity(opacity);
+        return layer;
+    }
+
     private void handlePNG(PrintRequest pr, ActionParameters params) throws ActionException {
         try {
             BufferedImage bi = printService.getPNG(pr);
@@ -393,6 +447,24 @@ public class GetPrintHandler extends ActionHandler {
 
         public String getStyle() {
             return style;
+        }
+
+    }
+    
+    private enum ProxyPrintLayer {
+        
+        MyPlaces("myplaces_", "myplaces", "oskari:my_places_categories"),
+        UserLayer("userlayer_", OskariLayer.TYPE_USERLAYER, "oskari:user_layer_data_style"),
+        Analysis("analysis_", OskariLayer.TYPE_ANALYSIS, "oskari:analysis_data_style");
+        
+        private final String prefix;
+        private final String type;
+        private final String layerName;
+        
+        private ProxyPrintLayer(String prefix, String type, String layerName) {
+            this.prefix = prefix;
+            this.type = type;
+            this.layerName = layerName;
         }
 
     }

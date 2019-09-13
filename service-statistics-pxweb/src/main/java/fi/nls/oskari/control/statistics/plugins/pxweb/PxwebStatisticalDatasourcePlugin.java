@@ -3,10 +3,13 @@ package fi.nls.oskari.control.statistics.plugins.pxweb;
 import fi.nls.oskari.control.statistics.data.*;
 import fi.nls.oskari.control.statistics.plugins.APIException;
 import fi.nls.oskari.control.statistics.plugins.StatisticalDatasourcePlugin;
+import fi.nls.oskari.control.statistics.plugins.db.DatasourceLayer;
 import fi.nls.oskari.control.statistics.plugins.db.StatisticalDatasource;
 import fi.nls.oskari.control.statistics.plugins.pxweb.parser.PxwebIndicatorsParser;
+import fi.nls.oskari.control.statistics.plugins.pxweb.parser.ValueProcessor;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
+import fi.nls.oskari.service.ServiceRuntimeException;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import org.json.JSONArray;
@@ -22,6 +25,8 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
 
     private static final Logger LOG = LogFactory.getLogger(PxwebStatisticalDatasourcePlugin.class);
     private PxwebIndicatorsParser indicatorsParser;
+    private static final ValueProcessor DEFAULT_PROCESSOR = new ValueProcessor();
+    private Map<String, ValueProcessor> processors = new HashMap<>();
 
     private PxwebConfig config;
 
@@ -106,7 +111,18 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
                                                           StatisticalIndicatorDataModel params,
                                                           StatisticalIndicatorLayer regionset) {
         Map<String, IndicatorValue> values = new HashMap<>();
-        String url = createUrl(regionset.getParam("baseUrl"), indicator.getId());
+        String indicatorId = indicator.getId();
+        if(config.hasIndicatorKey()) {
+            // indicatorId will be something.px::[value of indicatorKey]
+            int separatorIndex = indicatorId.lastIndexOf("::");
+            if(separatorIndex == -1) {
+                throw new ServiceRuntimeException("Unidentified indicator id: " + indicatorId);
+            }
+            String indicatorSelector = indicatorId.substring(separatorIndex + 2);
+            indicatorId = indicatorId.substring(0, separatorIndex);
+            params.addDimension(new StatisticalIndicatorDataDimension(config.getIndicatorKey(), indicatorSelector));
+        }
+        String url = createUrl(regionset.getParam("baseUrl"), indicatorId);
         JSONArray query = new JSONArray();
         JSONObject payload = JSONHelper.createJSONObject("query", query);
         final String regionKey = config.getRegionKey();
@@ -128,6 +144,12 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
         }
         JSONHelper.putValue(payload, "response", JSONHelper.createJSONObject("format", "json-stat"));
 
+        DatasourceLayer layer = getSource().getLayers()
+                .stream()
+                .filter(l -> l.getMaplayerId() == regionset.getOskariLayerId())
+                .findFirst()
+                .orElseThrow(() -> new ServiceRuntimeException("Invalid regionset: " + regionset.getOskariLayerId()));
+        ValueProcessor processor = getValueProcessor(layer);
         try {
             final HttpURLConnection con = IOHelper.getConnection(url);
             IOHelper.writeHeader(con, IOHelper.HEADER_CONTENTTYPE, IOHelper.CONTENT_TYPE_JSON + ";  charset=utf-8");
@@ -147,12 +169,8 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
             JSONArray names = stats.names();
             for (int i = 0; i < names.length(); ++i) {
                 String region = names.optString(i);
-                Double val = responseValues.optDouble(stats.optInt(region));
-                if (val.isNaN()) {
-                    continue;
-                }
-                IndicatorValue indicatorValue = new IndicatorValueFloat(val);
-                values.put(region, indicatorValue);
+                processor.getRegionValue(responseValues, region, stats.optInt(region), layer)
+                    .ifPresent(v -> values.put(v.getRegion(), v.getValue()));
             }
         } catch (IOException e) {
             throw new APIException("Couldn't get data from service/parsing failed", e);
@@ -162,6 +180,33 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
     }
 
     private String createUrl(String baseUrl, String pathId) {
-        return IOHelper.fixPath(baseUrl + "/" + IOHelper.urlEncode(pathId));
+        if(!baseUrl.endsWith(".px")) {
+            return IOHelper.fixPath(baseUrl + "/" + IOHelper.urlEncode(pathId));
+        }
+        return baseUrl;
+    }
+
+    private ValueProcessor getValueProcessor(DatasourceLayer layer) {
+        String className = layer.getConfig("valueProcessor");
+        if(className == null) {
+            return DEFAULT_PROCESSOR;
+        }
+        ValueProcessor processor = processors.get(className);
+        if(processor != null) {
+            return processor;
+        }
+        try {
+            final Class clazz = Class.forName(className);
+            if(!ValueProcessor.class.isAssignableFrom(clazz)) {
+                LOG.warn("Invalid ValueProcessor configured for datasource id:", config.getId(), " - class:", className);
+                return DEFAULT_PROCESSOR;
+            }
+            processor = (ValueProcessor) clazz.newInstance();
+            processors.put(className, processor);
+            return processor;
+        } catch (Exception e) {
+            LOG.error(e, "Error creating ValueProcessor for plugin id:", config.getId(), " - class:", className);
+        }
+        return DEFAULT_PROCESSOR;
     }
 }

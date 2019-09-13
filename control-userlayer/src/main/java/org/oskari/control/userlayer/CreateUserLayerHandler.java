@@ -1,12 +1,12 @@
 package org.oskari.control.userlayer;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +18,7 @@ import java.util.zip.ZipInputStream;
 
 import javax.servlet.http.HttpServletRequest;
 
+import fi.nls.oskari.control.*;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -35,17 +36,13 @@ import org.oskari.map.userlayer.service.UserLayerDbServiceMybatisImpl;
 
 import fi.mml.map.mapwindow.util.OskariLayerWorker;
 import fi.nls.oskari.annotation.OskariActionRoute;
-import fi.nls.oskari.control.ActionException;
-import fi.nls.oskari.control.ActionHandler;
-import fi.nls.oskari.control.ActionParameters;
-import fi.nls.oskari.control.ActionParamsException;
-import fi.nls.oskari.control.ActionConstants;
 import fi.nls.oskari.domain.map.userlayer.UserLayer;
 import fi.nls.oskari.domain.map.userlayer.UserLayerData;
 import fi.nls.oskari.domain.map.userlayer.UserLayerStyle;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.service.ServiceException;
+import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
@@ -67,13 +64,20 @@ import fi.nls.oskari.util.ResponseHelper;
  * in the SHP case) we use client submitted value ('sourceEpsg' parameter) as a fallback.
  */
 @OskariActionRoute("CreateUserLayer")
-public class CreateUserLayerHandler extends ActionHandler {
+public class CreateUserLayerHandler extends RestActionHandler {
 
     private static final Logger log = LogFactory.getLogger(CreateUserLayerHandler.class);
 
     private static final String PROPERTY_USERLAYER_MAX_FILE_SIZE_MB = "userlayer.max.filesize.mb";
     private static final String PROPERTY_TARGET_EPSG = "oskari.native.srs";
     private static final int MAX_FILES_IN_ZIP = 10;
+
+    private static final Charset[] POSSIBLE_CHARSETS_USED_IN_ZIP_FILE_NAMES = {
+            StandardCharsets.UTF_8,
+            StandardCharsets.ISO_8859_1,
+            Charset.forName("CP437"),
+            Charset.forName("CP866")
+    };
 
     private static final String PARAM_SOURCE_EPSG_KEY = "sourceEpsg";
     private static final String KEY_NAME = "layer-name";
@@ -86,6 +90,8 @@ public class CreateUserLayerHandler extends ActionHandler {
 
     // Store files smaller than 128kb in memory instead of writing them to disk
     private static final int MAX_SIZE_MEMORY = 128 * KB;
+
+    private static final int MAX_RETRY_RANDOM_UUID = 100;
 
     private final DiskFileItemFactory diskFileItemFactory = new DiskFileItemFactory(MAX_SIZE_MEMORY, null);
     private final String targetEPSG = PropertyUtil.get(PROPERTY_TARGET_EPSG, "EPSG:4326");
@@ -105,7 +111,7 @@ public class CreateUserLayerHandler extends ActionHandler {
     }
 
     @Override
-    public void handleAction(ActionParameters params) throws ActionException {
+    public void handlePost(ActionParameters params) throws ActionException {
         params.requireLoggedInUser();
 
         String sourceEPSG = params.getHttpParam(PARAM_SOURCE_EPSG_KEY);
@@ -121,8 +127,9 @@ public class CreateUserLayerHandler extends ActionHandler {
                     .findAny() // If there are more files we'll get the zip or fail miserably
                     .orElseThrow(() -> new ActionParamsException("No file entries"));
             log.debug("Using value from field:", zipFile.getFieldName(), "as the zip file");
-            Set<String> validFiles = checkZip(zipFile);
-            fc = parseFeatures(zipFile, validFiles, sourceCRS, targetCRS);
+            Charset cs = determineCharsetForZipFileNames(zipFile);
+            Set<String> validFiles = checkZip(zipFile, cs);
+            fc = parseFeatures(zipFile, cs, validFiles, sourceCRS, targetCRS);
             formParams = getFormParams(fileItems);
             log.debug("Parsed form parameters:", formParams);
         } finally {
@@ -131,6 +138,26 @@ public class CreateUserLayerHandler extends ActionHandler {
 
         UserLayer userLayer = store(fc, params.getUser().getUuid(), formParams);
         writeResponse(params, userLayer);
+    }
+
+    private Charset determineCharsetForZipFileNames(FileItem zipFile) throws ActionException {
+        try {
+            for (Charset cs : POSSIBLE_CHARSETS_USED_IN_ZIP_FILE_NAMES) {
+                try (InputStream in = zipFile.getInputStream();
+                        ZipInputStream zis = new ZipInputStream(in, cs)) {
+                    while (zis.getNextEntry() != null) {
+                        // Get next
+                    }
+                    log.debug("Succesfully read zip file names with encoding:", cs.name());
+                    return cs;
+                } catch (IllegalArgumentException ignore) {
+                    log.debug("Failed to read zip file names with encoding:", cs.name());
+                }
+            }
+            throw new ActionException("Failed to decode file names in the zip file");
+        } catch (IOException e) {
+            throw new ActionException("Unexpected IOException occured", e);
+        }
     }
 
     private CoordinateReferenceSystem decodeCRS(String epsg) throws ActionParamsException {
@@ -152,9 +179,9 @@ public class CreateUserLayerHandler extends ActionHandler {
         }
     }
 
-    private Set<String> checkZip(FileItem zipFile) throws ActionException {
+    private Set<String> checkZip(FileItem zipFile, Charset cs) throws ActionException {
         try (InputStream in = zipFile.getInputStream();
-                ZipInputStream zis = new ZipInputStream(in)) {
+                ZipInputStream zis = new ZipInputStream(in, cs)) {
             Set<String> validFiles = new HashSet<>();
             Set<String> extensions = new HashSet<>();
             ZipEntry ze;
@@ -164,24 +191,42 @@ public class CreateUserLayerHandler extends ActionHandler {
                     // safeguard against evil zip files, userlayers shouldn't have this many files in any case
                     throw new ActionParamsException("Zip contains too many files");
                 }
-                if (ze.isDirectory()) {
-                    continue;
+                String name = checkValidFileName(ze, extensions);
+                if (name != null) {
+                    validFiles.add(name);
                 }
-                String name = ze.getName();
-                String ext = getFileExt(name).toLowerCase();
-                if (ext == null) {
-                    continue;
-                }
-                if (!extensions.add(ext)) {
-                    throw new ActionParamsException("Zip contains multiple files with same extension");
-                }
-                validFiles.add(name);
             }
             checkZipContainsExactlyOneMainFile(extensions);
             return validFiles;
         } catch (IOException e) {
             throw new ActionException("Unexpected IOException occured", e);
         }
+    }
+
+    private static String checkValidFileName(ZipEntry ze, Set<String> extensions) throws ActionParamsException {
+        if (ze.isDirectory()) {
+            return null;
+        }
+        String name = ze.getName();
+        if (name.indexOf('/') >= 0) {
+            log.debug(name, "is inside a directory, ignoring");
+            return null;
+        }
+        if (name.indexOf('.') == 0) {
+            log.debug(name, "starts with '.', ignoring");
+            return null;
+        }
+        String ext = getFileExt(name);
+        if (ext == null) {
+            log.debug(name, "doesn't have non-empty file extension, ignoring");
+            return null;
+        }
+        ext = ext.toLowerCase();
+        if (!extensions.add(ext)) {
+            throw new ActionParamsException("Zip contains multiple files with same extension");
+        }
+        log.debug(name, "accepted as valid filename");
+        return name;
     }
 
     private void checkZipContainsExactlyOneMainFile(Set<String> extensions) throws ActionParamsException {
@@ -205,13 +250,13 @@ public class CreateUserLayerHandler extends ActionHandler {
     }
 
     private SimpleFeatureCollection parseFeatures(FileItem zipFile,
-            Set<String> validFiles,
+            Charset cs, Set<String> validFiles,
             CoordinateReferenceSystem sourceCRS,
             CoordinateReferenceSystem targetCRS) throws ActionException {
         File dir = null;
         try {
             dir = makeRandomTempDirectory();
-            File mainFile = unZip(zipFile, validFiles, dir);
+            File mainFile = unZip(zipFile, cs, validFiles, dir);
             FeatureCollectionParser parser = getParser(mainFile);
             return parse(parser, mainFile, sourceCRS, targetCRS);
         } finally {
@@ -238,7 +283,7 @@ public class CreateUserLayerHandler extends ActionHandler {
             File tmpFile = File.createTempFile("temp", null);
             File tmpDir = tmpFile.getParentFile();
             tmpFile.delete();
-            while (true) {
+            for (int i = 0; i < MAX_RETRY_RANDOM_UUID; i++) {
                 String randomId = UUID.randomUUID().toString().substring(0, 24);
                 File dir = new File(tmpDir, randomId);
                 if (dir.exists()) {
@@ -251,23 +296,33 @@ public class CreateUserLayerHandler extends ActionHandler {
                     throw new ActionException("Failed to create temp directory");
                 }
             }
+            throw new ActionException("Failed to create temp directory after max attempts!");
         } catch (IOException e) {
             throw new ActionException("Failed to create temp directory", e);
         }
     }
 
-    private File unZip(FileItem zipFile, Set<String> validFiles, File dir) throws ActionException {
+    private File unZip(FileItem zipFile, Charset cs, Set<String> validFiles, File dir) throws ActionException {
         try (InputStream in = zipFile.getInputStream();
-                ZipInputStream zis = new ZipInputStream(in)) {
+                ZipInputStream zis = new ZipInputStream(in, cs)) {
             ZipEntry ze;
             File mainFile = null;
             while ((ze = zis.getNextEntry()) != null) {
+                if (ze.isDirectory()) {
+                    continue;
+                }
                 String name = ze.getName();
                 if (!validFiles.contains(name)) {
                     continue;
                 }
+                // Beyond this point all files in the root directory of the zip have a non-empty file extension
+                // Also we've checked that no two files share the same file extension
+                // Save all the files to $TEMP/{random_uuid_dir}/a.{ext} to eliminate the possibility of illegal characters in the filename
+                name = "a" + name.substring(name.lastIndexOf('.'));
                 File file = new File(dir, name);
-                Files.copy(zis, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                try (FileOutputStream fos = new FileOutputStream(file)) {
+                    IOHelper.copy(zis, fos);
+                }
                 if (mainFile == null) {
                     String ext = getFileExt(name);
                     if (FeatureCollectionParsers.hasByFileExt(ext)) {
@@ -281,7 +336,7 @@ public class CreateUserLayerHandler extends ActionHandler {
         }
     }
 
-    private String getFileExt(String name) {
+    private static String getFileExt(String name) {
         int i = name.lastIndexOf('.');
         if (i < 0 || i + 1 == name.length()) {
             return null;
