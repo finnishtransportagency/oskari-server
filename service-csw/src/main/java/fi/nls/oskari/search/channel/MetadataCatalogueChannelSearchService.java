@@ -316,8 +316,9 @@ public class MetadataCatalogueChannelSearchService extends SearchChannel {
         // POSTing GetRecords request
         final String queryURL = serverURL + queryPath;
         HttpURLConnection conn = getConnection(queryURL);
+        IOHelper.writeHeader(conn, "Content-Type", "application/xml;charset=UTF-8");
         conn.setUseCaches(false);
-        IOHelper.post(conn, "application/xml;charset=UTF-8", payload);
+        IOHelper.writeToConnection(conn, payload);
 
         final long end =  System.currentTimeMillis();
 

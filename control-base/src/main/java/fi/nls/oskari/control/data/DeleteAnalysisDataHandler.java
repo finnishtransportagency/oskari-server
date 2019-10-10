@@ -9,14 +9,13 @@ import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 
 /**
  * Deletes analysis data if it belongs to current user.
  * Expects to get analysis id as http parameter "id".
  */
 @OskariActionRoute("DeleteAnalysisData")
-public class DeleteAnalysisDataHandler extends RestActionHandler {
+public class DeleteAnalysisDataHandler extends ActionHandler {
 
     private final static String PARAM_ID = "id";
     //private final static Logger log = LogFactory.getLogger(DeleteAnalysisDataHandler.class);
@@ -36,8 +35,10 @@ public class DeleteAnalysisDataHandler extends RestActionHandler {
     }
 
     @Override
-    public void handlePost(ActionParameters params) throws ActionException {
-        params.requireLoggedInUser();
+    public void handleAction(ActionParameters params) throws ActionException {
+        if(params.getUser().isGuest()) {
+            throw new ActionDeniedException("Session expired");
+        }
         final long id = ConversionHelper.getLong(params.getHttpParam(PARAM_ID), -1);
         if(id == -1) {
             throw new ActionParamsException("Parameter missing or non-numeric: " + PARAM_ID + "=" + params.getHttpParam(PARAM_ID));
@@ -54,9 +55,6 @@ public class DeleteAnalysisDataHandler extends RestActionHandler {
         try {
             // remove analysis
             analysisDataService.deleteAnalysis(analysis);
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", id)
-                    .deleted(AuditLog.ResourceType.ANALYSIS);
             // write static response to notify success {"result" : "success"}
             ResponseHelper.writeResponse(params, JSONHelper.createJSONObject("result", "success"));
         } catch (ServiceException ex) {

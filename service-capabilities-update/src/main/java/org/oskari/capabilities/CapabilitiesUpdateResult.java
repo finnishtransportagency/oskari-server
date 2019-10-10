@@ -8,7 +8,11 @@ public class CapabilitiesUpdateResult {
     private final String errorMessage;
 
     private CapabilitiesUpdateResult(OskariLayer layer, String errorMessage) {
-        this.layerId = Integer.toString(layer.getId());
+        if (layer.getExternalId() != null && !layer.getExternalId().isEmpty()) {
+            this.layerId = layer.getExternalId();
+        } else {
+            this.layerId = Integer.toString(layer.getId());
+        }
         this.errorMessage = errorMessage;
     }
 

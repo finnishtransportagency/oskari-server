@@ -10,33 +10,31 @@ import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.view.ViewException;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
+import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.json.JSONObject;
 
 
 @OskariActionRoute("AddView")
-public class SaveViewHandler extends RestActionHandler {
+public class SaveViewHandler extends ActionHandler {
 
     private final static Logger log = LogFactory.getLogger(SaveViewHandler.class);
-    private static final ViewService viewService = new AppSetupServiceMybatisImpl();
+    private static final ViewService viewService = new ViewServiceIbatisImpl();
 
     private final static String VIEW_NAME = "viewName";
-    private final static String VIEW_UUID = "uuid";
     private final static String VIEW_DESCRIPTION = "viewDescription";
     private final static String VIEW_DATA = "viewData";
     private final static String IS_DEFAULT = "isDefault";
 
-    public void handlePost(final ActionParameters params) throws ActionException {
+    public void handleAction(final ActionParameters params) throws ActionException {
 
         if (params.getUser().isGuest()) {
             throw new ActionDeniedException("Session expired");
         }
 
-        // Cloned view based on users current view
+        // Cloned view based on user based default view
         final View view = getBaseView(params);
         final User user = params.getUser();
 
@@ -52,13 +50,6 @@ public class SaveViewHandler extends RestActionHandler {
 
             final long newViewId = viewService.addView(view);
             view.setId(newViewId);
-
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", view.getId())
-                    .withParam("name", view.getName())
-                    .withParam("default", view.isDefault())
-                    .added(AuditLog.ResourceType.USER_VIEW);
-
         } catch (ViewException e) {
             throw new ActionException("Error when trying add published view", e);
         }
@@ -98,27 +89,11 @@ public class SaveViewHandler extends RestActionHandler {
             throw new ActionParamsException("Parameter missing:" + VIEW_NAME);
         }
 
-        View currentView = null;
-        String uuid = params.getHttpParam(VIEW_UUID);
-        if (uuid != null) {
-            // get view by uuid
-            currentView = viewService.getViewWithConfByUuId(uuid);
-
-            if (currentView == null) {
-                throw new ActionParamsException("Could not fetch current view uuid:" + uuid);
-            }
-            else if (!currentView.isPublic() && currentView.getCreator() != params.getUser().getId()){
-                throw new ActionDeniedException("User has no right to edit view with uuid: " + uuid);
-            }
-        }
+        // get default view id for the user
+        final long currentViewId = viewService.getDefaultViewId(params.getUser());
+        final View currentView = viewService.getViewWithConf(currentViewId);
         if (currentView == null) {
-            // get default view id for the user
-            final long currentViewId = viewService.getDefaultViewId(params.getUser());
-            currentView = viewService.getViewWithConf(currentViewId);
-
-            if (currentView == null) {
-                throw new ActionParamsException("Could not fetch current view id:" + currentViewId);
-            }
+            throw new ActionParamsException("Could not fetch current view id:" + currentViewId);
         }
 
         // clone so we are not overwriting the template!

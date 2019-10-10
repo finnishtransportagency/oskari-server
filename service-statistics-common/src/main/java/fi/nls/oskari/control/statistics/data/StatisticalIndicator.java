@@ -1,7 +1,6 @@
 package fi.nls.oskari.control.statistics.data;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import fi.nls.oskari.control.statistics.plugins.db.DatasourceLayer;
 import fi.nls.oskari.util.PropertyUtil;
 
 import java.util.*;
@@ -41,14 +40,8 @@ public class StatisticalIndicator {
     public void setPublic(boolean isPublic) {
         this.isPublic = isPublic;
     }
-    public void addLayer(DatasourceLayer layer) {
-        addLayer(new StatisticalIndicatorLayer(layer.getMaplayerId(), this.getId()));
-    }
     public void addLayer(StatisticalIndicatorLayer layer) {
         layers.add(layer);
-    }
-    public void addLayers(List<StatisticalIndicatorLayer> list) {
-        layers.addAll(list);
     }
     public List<StatisticalIndicatorLayer> getLayers() {
         return layers;
@@ -62,12 +55,7 @@ public class StatisticalIndicator {
         return null;
     }
     public String getName(String lang) {
-        String name = getLocalizedValue(getName(), lang);
-
-        if(name == null || name.trim().isEmpty()) {
-            throw new NoSuchElementException("Value not found for " + lang + " or " + PropertyUtil.getDefaultLanguage());
-        }
-        return name;
+        return getLocalizedValue(getName(), lang);
     }
     public String getSource(String lang) {
         return getLocalizedValue(getSource(), lang);
@@ -85,16 +73,9 @@ public class StatisticalIndicator {
             lang = PropertyUtil.getDefaultLanguage();
         }
         String value = map.get(lang);
-        if(value == null || value.trim().isEmpty()) {
+        if(value == null) {
             // try with default language
-            value = map.get(PropertyUtil.getDefaultLanguage());
-        }
-        if(value == null || value.trim().isEmpty()) {
-            // try any language
-            value = map.values().stream()
-                    .filter(val -> val.trim().isEmpty())
-                    .findFirst()
-                    .orElse(null);
+            return map.get(PropertyUtil.getDefaultLanguage());
         }
         return value;
     }

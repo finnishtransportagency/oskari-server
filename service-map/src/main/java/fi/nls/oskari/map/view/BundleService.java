@@ -1,11 +1,14 @@
 package fi.nls.oskari.map.view;
 
 import fi.nls.oskari.domain.map.view.Bundle;
-import fi.nls.oskari.service.OskariComponent;
+import fi.nls.oskari.service.db.BaseService;
 
-public abstract class BundleService extends OskariComponent {
 
-    public abstract Bundle getBundleTemplateByName(final String name);
-    public abstract long addBundleTemplate(final Bundle bundle);
-    public abstract void forceBundleTemplateCached(final String bundleid);
+public interface BundleService extends BaseService<Bundle> {
+
+    Bundle getBundleTemplateByName(final String name);
+
+    long addBundleTemplate(final Bundle bundle);
+
+    void forceBundleTemplateCached(final String bundleid);
 }

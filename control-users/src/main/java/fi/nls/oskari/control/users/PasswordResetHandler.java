@@ -18,7 +18,6 @@ import fi.nls.oskari.service.UserService;
 import fi.nls.oskari.spring.SpringContextHolder;
 import fi.nls.oskari.user.MybatisUserService;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.springframework.context.MessageSource;
 
 import javax.servlet.http.HttpServletRequest;
@@ -109,9 +108,6 @@ public class PasswordResetHandler extends RestActionHandler {
                 mailSenderService.sendEmailForResetPassword(email, token.getUuid(), RegistrationUtil.getServerAddress(params), params.getLocale().getLanguage());
                 LOG.info("Reset password email sent to:", email);
             }
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withMsg("Requested new password")
-                    .updated(AuditLog.ResourceType.USER);
         } catch (ServiceException ex) {
             throw new ActionException(getMessage("user.registration.error.sendingFailed", params.getLocale().getLanguage()), ex);
         }
@@ -141,10 +137,6 @@ public class PasswordResetHandler extends RestActionHandler {
             }
             // After password updated/created, delete the entry related to token from database
             registerTokenService.removeTokenByUUID(token.getUuid());
-
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withMsg("Updated password")
-                    .updated(AuditLog.ResourceType.USER);
         } catch (ServiceException se) {
             throw new ActionException(se.getMessage(), se);
         }

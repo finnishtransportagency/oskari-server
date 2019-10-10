@@ -1,6 +1,5 @@
 package fi.nls.oskari.map.analysis.service;
 
-import fi.nls.oskari.domain.map.UserDataStyle;
 import fi.nls.oskari.domain.map.analysis.Analysis;
 import fi.nls.oskari.domain.map.analysis.AnalysisStyle;
 import fi.nls.oskari.service.ServiceException;
@@ -31,10 +30,12 @@ public class AnalysisDbServiceMybatisImplTest {
     public void setUp() throws ServiceException {
         analysisDbServiceMybatis = new AnalysisDbServiceMybatisImpl();
         analysisStyleDbServiceMybatis = new AnalysisStyleDbServiceMybatisImpl();
-        testAnalysis = new Analysis();
-        UserDataStyle analysisStyle = testAnalysis.getStyle();
-        analysisStyle.initDefaultStyle();
+
+        AnalysisStyle analysisStyle = new AnalysisStyle();
+        analysisStyle.setDot_shape("POLYGON");
         analysisStyleDbServiceMybatis.insertAnalysisStyleRow(analysisStyle);
+
+        testAnalysis = new Analysis();
         testAnalysis.setName(testAnalysisName);
         testAnalysis.setUuid(testUid);
         testAnalysis.setStyle_id(analysisStyle.getId());

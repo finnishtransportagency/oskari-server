@@ -34,6 +34,7 @@ public class BundleTestHelper {
         final String jsonString = ResourceHelper.readStringResource("/views/bundles/" + bundle + ".json");
         try {
             JSONObject obj = JSONHelper.createJSONObject(jsonString);
+            b.setStartup(obj.getJSONObject("startup").toString());
             b.setConfig(obj.getJSONObject("config").getJSONObject("conf").toString());
             b.setState(obj.getJSONObject("config").getJSONObject("state").toString());
             if(bundle.indexOf('.') != -1) {

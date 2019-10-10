@@ -1,6 +1,8 @@
 package fi.nls.oskari.control.view;
 
 import fi.mml.map.mapwindow.util.OskariLayerWorker;
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.control.ActionConstants;
 import fi.nls.oskari.control.ActionParameters;
 import fi.nls.oskari.control.view.modifier.bundle.MapfullHandler;
@@ -10,25 +12,22 @@ import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.DataProvider;
 import fi.nls.oskari.domain.map.view.View;
 import fi.nls.oskari.domain.map.view.ViewTypes;
-import fi.nls.oskari.map.analysis.domain.AnalysisLayer;
+import fi.nls.oskari.map.data.service.PublishedMapRestrictionService;
+import fi.nls.oskari.map.data.service.PublishedMapRestrictionServiceImpl;
 import fi.nls.oskari.map.layer.DataProviderService;
-import fi.nls.oskari.map.layer.DataProviderServiceMybatisImpl;
-import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
+import fi.nls.oskari.map.layer.DataProviderServiceIbatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
 import fi.nls.oskari.map.view.BundleService;
-import fi.nls.oskari.map.view.BundleServiceMybatisImpl;
+import fi.nls.oskari.map.view.BundleServiceIbatisImpl;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
-import fi.nls.oskari.service.OskariComponentManager;
+import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
 import fi.nls.oskari.util.DuplicateException;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.view.modifier.ViewModifier;
-import fi.nls.oskari.wfs.WFSSearchChannelsService;
-import fi.nls.oskari.wfs.WFSSearchChannelsServiceMybatisImpl;
 import fi.nls.test.control.JSONActionRouteTest;
 import fi.nls.test.util.ResourceHelper;
 import fi.nls.test.view.BundleTestHelper;
 import fi.nls.test.view.ViewTestHelper;
-import org.json.JSONObject;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -36,16 +35,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.PermissionServiceMybatisImpl;
-import org.oskari.permissions.model.PermissionType;
-import org.oskari.permissions.model.ResourceType;
-import org.oskari.service.util.ServiceFactory;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
@@ -65,15 +61,17 @@ import static org.powermock.api.support.membermodification.MemberModifier.suppre
  * To change this template use File | Settings | File Templates.
  */
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(value = {WFSHighlightParamHandler.class, OskariLayerWorker.class, PropertyUtil.class, MapfullHandler.class, ServiceFactory.class})
-@PowerMockIgnore({"com.sun.org.apache.xalan.*", "com.sun.org.apache.xerces.*", "javax.xml.*", "org.w3c.dom.*", "org.xml.*", "com.sun.org.apache.xml.*"})
+@PrepareForTest(value = {WFSHighlightParamHandler.class, OskariLayerWorker.class, PropertyUtil.class, MapfullHandler.class})
 public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
     final private GetAppSetupHandler handler = new GetAppSetupHandler();
 
     private ViewService viewService = null;
     private BundleService bundleService = null;
+    private PublishedMapRestrictionService restrictionService = null;
 
+    //propertyutilsilla propertyt, checkataan että jsoniin tulee lisää bundlea.
+    //
     @BeforeClass
     public static void addLocales() throws Exception {
         Properties properties = new Properties();
@@ -86,52 +84,24 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
         } catch (DuplicateException e) {
             fail("Should not throw exception" + e.getStackTrace());
         }
-        // To get fresh start for components
-        OskariComponentManager.teardown();
     }
     @Before
     public void setUp() throws Exception {
+
         mockViewService();
         mockBundleService();
+        restrictionService = mock(PublishedMapRestrictionServiceImpl.class);
         mockInternalServices();
 
         handler.setViewService(viewService);
         handler.setBundleService(bundleService);
+        handler.setPublishedMapRestrictionService(restrictionService);
 
         handler.init();
     }
     @AfterClass
     public static void teardown() {
         PropertyUtil.clearProperties();
-        // To get fresh start for components
-        OskariComponentManager.teardown();
-    }
-
-    @Test
-    public void testURLsWithRegistrationAllowed() throws Exception {
-        PropertyUtil.addProperty("allow.registration", "true");
-        final ActionParameters params = createActionParams();
-        handler.handleAction(params);
-
-        JSONObject responseUrls = getResponseJSON().optJSONObject("env").optJSONObject("urls");
-        assertEquals("Should have default register url", "/user", responseUrls.opt("register"));
-        assertEquals("Should have default profile url", "/user", responseUrls.opt("profile"));
-
-        teardown();
-        addLocales();
-    }
-
-    @Test
-    public void testLoginUrl() throws Exception {
-        PropertyUtil.addProperty("auth.login.url", "/login");
-        final ActionParameters params = createActionParams();
-        handler.handleAction(params);
-
-        JSONObject responseUrls = getResponseJSON().optJSONObject("env").optJSONObject("urls");
-        assertEquals("Should have login url", "/login", responseUrls.opt("login"));
-        assertNull("Should NOT have register url as allow.registration not set", responseUrls.opt("register"));
-        teardown();
-        addLocales();
     }
 
 
@@ -188,10 +158,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
         final ActionParameters params = createActionParams(parameters);
         handler.handleAction(params);
 
-        JSONObject responseState = getResponseJSON().optJSONObject("configuration").optJSONObject("mapfull").optJSONObject("state");
-        assertEquals("Should have requested east", "123", responseState.opt("east"));
-        assertEquals("Should have requested north", "456", responseState.opt("north"));
-        // coordinates should be set as in param and Oskari.mapframework.bundle.mapmodule.plugin.GeoLocationPlugin plugin should have been removed from config
+        // coordinates should be set as in param and geolocation plugin should have been removed from config
         verifyResponseContent(ResourceHelper.readJSONResource("GetAppSetupHandlerTest-coordinate-params.json", this));
     }
 
@@ -215,14 +182,11 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
      */
     private void mockViewService() {
 
-        viewService = mock(AppSetupServiceMybatisImpl.class);
+        viewService = mock(ViewServiceIbatisImpl.class);
         // id 2 for guest user
         doReturn(2L).when(viewService).getDefaultViewId(getGuestUser());
         // id 1 for logged in user
         doReturn(1L).when(viewService).getDefaultViewId(getLoggedInUser());
-
-        // id 1 for default
-        doReturn(1L).when(viewService).getDefaultViewId();
 
         final View dummyView = ViewTestHelper.createMockView("framework.mapfull");
         dummyView.setType(ViewTypes.USER);
@@ -241,7 +205,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
     private void mockBundleService() throws Exception {
 
-        bundleService = mock(BundleServiceMybatisImpl.class);
+        bundleService = mock(BundleServiceIbatisImpl.class);
         doReturn(
                 BundleTestHelper.loadBundle("integration.admin-layerselector")
         ).when(bundleService).getBundleTemplateByName(ViewModifier.BUNDLE_ADMINLAYERSELECTOR);
@@ -252,7 +216,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
         // return mocked  bundle service if a new one is created (in paramhandlers for example)
         // classes doing this must be listed in PrepareForTest annotation
-        whenNew(BundleServiceMybatisImpl.class).withNoArguments().
+        whenNew(BundleServiceIbatisImpl.class).withNoArguments().
                 thenAnswer(new Answer<Object>() {
                     public Object answer(InvocationOnMock invocation) throws Throwable {
                         return bundleService;
@@ -262,39 +226,47 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
     private void mockInternalServices() throws Exception {
 
-        final PermissionService service = mock(PermissionServiceMybatisImpl.class);
-        // permission check is skipped here so just mock the call
-        doReturn(Optional.empty()).when(service).findResource(eq(ResourceType.maplayer.name()), any(String.class));
-        doReturn(Collections.emptySet()).when(service).getResourcesWithGrantedPermissions(eq(AnalysisLayer.TYPE), any(User.class), eq(PermissionType.VIEW_PUBLISHED.name()));
-
+        final PermissionsService service = mock(PermissionsServiceIbatisImpl.class);
+        doReturn(
+                Collections.emptyList()
+        ).when(service).getResourcesWithGrantedPermissions(anyString(), any(User.class), anyString());
 
         // return mocked  bundle service if a new one is created (in paramhandlers for example)
         // classes doing this must be listed in PrepareForTest annotation
-        whenNew(PermissionServiceMybatisImpl.class).withNoArguments().
+        whenNew(PermissionsServiceIbatisImpl.class).withNoArguments().
                 thenAnswer(new Answer<Object>() {
-                    public Object answer(InvocationOnMock invocation) {
+                    public Object answer(InvocationOnMock invocation) throws Throwable {
                         return service;
                     }
                 });
 
 
-        final WFSSearchChannelsService searchService = mock(WFSSearchChannelsServiceMybatisImpl.class);
-        doReturn(Collections.emptyList()).when(searchService).findChannels();
-        whenNew(WFSSearchChannelsServiceMybatisImpl.class).withNoArguments().
+/*
+    public static JSONObject getSelectedLayersStructure(List<String> layerList,
+                                                        User user, String lang, String remoteIp, boolean isPublished) {
+                                                        */
+        // TODO: mock MapLayerWorker.getSelectedLayersStructure() instead to return a valid JSON structure
+        //BaseIbatisService.class
+        //SqlMapClient client = null;
+        //protected SqlMapClient getSqlMapClient()
+/*
+        final BaseIbatisService ibatisBase = mock(BaseIbatisService.class);
+        whenNew(BaseIbatisService.class).withNoArguments().
                 thenAnswer(new Answer<Object>() {
-                    public Object answer(InvocationOnMock invocation) {
-                        return searchService;
+                    public Object answer(InvocationOnMock invocation) throws Throwable {
+                        return ibatisBase;
                     }
                 });
-
-        suppress(constructor(OskariLayerServiceMybatisImpl.class));
-        final OskariLayerServiceMybatisImpl layerService = mock(OskariLayerServiceMybatisImpl.class);
+*/
+        //Whitebox.newInstance(OskariLayerServiceIbatisImpl.class);
+        suppress(constructor(OskariLayerServiceIbatisImpl.class));
+        final OskariLayerServiceIbatisImpl layerService = mock(OskariLayerServiceIbatisImpl.class);
         doReturn(null).when(layerService).find(anyInt());
         doReturn(Collections.emptyList()).when(layerService).findAll();
 
         // return mocked  bundle service if a new one is created (in paramhandlers for example)
         // classes doing this must be listed in PrepareForTest annotation
-        whenNew(OskariLayerServiceMybatisImpl.class).withNoArguments().
+        whenNew(OskariLayerServiceIbatisImpl.class).withNoArguments().
                 thenAnswer(new Answer<Object>() {
                     public Object answer(InvocationOnMock invocation) throws Throwable {
                         return layerService;
@@ -302,7 +274,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
                 });
 
         //Whitebox.newInstance(DataProviderServiceIbatisImpl.class);
-        final DataProviderService groupService = mock(DataProviderServiceMybatisImpl.class);
+        final DataProviderService groupService = mock(DataProviderServiceIbatisImpl.class);
         DataProvider group = mock(DataProvider.class);
         group.setName("en", "Testing");
         doReturn(group).when(groupService).find(anyInt());
@@ -310,7 +282,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
         // return mocked  bundle service if a new one is created (in paramhandlers for example)
         // classes doing this must be listed in PrepareForTest annotation
-        whenNew(DataProviderServiceMybatisImpl.class).withNoArguments().
+        whenNew(DataProviderServiceIbatisImpl.class).withNoArguments().
                 thenAnswer(new Answer<Object>() {
                     public Object answer(InvocationOnMock invocation) throws Throwable {
                         return groupService;

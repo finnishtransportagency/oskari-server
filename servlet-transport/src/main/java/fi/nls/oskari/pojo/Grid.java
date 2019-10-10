@@ -1,6 +1,6 @@
 package fi.nls.oskari.pojo;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +21,7 @@ public class Grid {
 	 * Constructs object without parameters
 	 */
 	public Grid() {
-		bounds = new ArrayList<>();
+		bounds = new ArrayList<List<Double>>();
 	}
 
 	/**

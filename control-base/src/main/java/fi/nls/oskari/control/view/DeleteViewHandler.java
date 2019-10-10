@@ -1,27 +1,28 @@
 package fi.nls.oskari.control.view;
 
 import fi.nls.oskari.annotation.OskariActionRoute;
-import fi.nls.oskari.control.*;
+import fi.nls.oskari.control.ActionDeniedException;
+import fi.nls.oskari.control.ActionException;
+import fi.nls.oskari.control.ActionHandler;
+import fi.nls.oskari.control.ActionParameters;
 import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.view.View;
-import fi.nls.oskari.domain.map.view.ViewTypes;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
+import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.json.JSONObject;
 
 @OskariActionRoute("DeleteView")
-public class DeleteViewHandler extends RestActionHandler {
+public class DeleteViewHandler extends ActionHandler {
 
-    private ViewService vs = new AppSetupServiceMybatisImpl();
+    private ViewService vs = new ViewServiceIbatisImpl();
     private static final Logger log = LogFactory.getLogger(DeleteViewHandler.class);
 
     @Override
-    public void handlePost(ActionParameters params) throws ActionException {
+    public void handleAction(ActionParameters params) throws ActionException {
 
         final long viewId = ConversionHelper.getLong(params.getHttpParam("id"), -1);
 
@@ -36,16 +37,6 @@ public class DeleteViewHandler extends RestActionHandler {
             log.debug("Deleting view:", view);
             try {
                 vs.deleteViewById(viewId);
-                AuditLog audit = AuditLog.user(params.getClientIp(), params.getUser())
-                        .withParam("uuid", view.getUuid())
-                        .withParam("name", view.getName());
-                if (ViewTypes.USER.equals(view.getType())) {
-                    audit.deleted(AuditLog.ResourceType.USER_VIEW);
-                } else {
-                    audit.withParam("domain", view.getPubDomain())
-                        .deleted(AuditLog.ResourceType.EMBEDDED_VIEW);
-                }
-
                 JSONObject resp = new JSONObject();
                 if (viewId >= 0) {
                     resp.put("id", viewId);

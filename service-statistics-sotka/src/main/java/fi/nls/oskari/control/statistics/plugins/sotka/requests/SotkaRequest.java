@@ -165,7 +165,7 @@ public class SotkaRequest {
             final String url = getUrl();
             con = IOHelper.getConnection(url);
 
-            final String data = IOHelper.readString(con);
+            final String data = IOHelper.readString(con.getInputStream());
             if (isCSV()) {
                 return getJsonFromCSV(data);
             }

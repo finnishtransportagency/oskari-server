@@ -11,6 +11,44 @@
     "bundles" : [
         {
             "id": "mapfull",
+            "startup": {
+                "title": "Map",
+                "bundlename": "mapfull",
+                "metadata": {
+                    "Import-Bundle": {
+                        "mapwmts": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "mapwfs2": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "mapanalysis": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "mapuserlayers": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "maparcgis": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "mapstats": {
+                          "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "mapmodule": {
+                            "bundlePath": "/Oskari/packages/mapping/ol3/"
+                        },
+                        "ui-components": {
+                            "bundlePath": "/Oskari/packages/framework/bundle/"
+                        },
+                        "mapfull": {
+                            "bundlePath": "/Oskari/packages/framework/bundle/"
+                        },
+                        "oskariui": {
+                            "bundlePath": "/Oskari/packages/framework/bundle/"
+                        }
+                    }
+                }
+            },
             "config": {
                 "mapOptions": {
                     "maxExtent" : {
@@ -32,6 +70,8 @@
                         "id": "Oskari.mapframework.bundle.mapwfs2.plugin.WfsLayerPlugin"
                     }, {
                         "id": "Oskari.mapframework.wmts.mapmodule.plugin.WmtsLayerPlugin"
+                    }, {
+                        "id": "Oskari.mapframework.bundle.mapstats.plugin.StatsLayerPlugin"
                     }, {
                         "id": "Oskari.mapframework.bundle.mapmodule.plugin.RealtimePlugin"
                     }, {
@@ -62,10 +102,32 @@
             }
         },
       {
-        "id" : "infobox"
+        "id" : "infobox",
+        "startup": {
+          "title": "Infobox OL3",
+          "bundlename": "infobox",
+          "metadata": {
+            "Import-Bundle": {
+              "infobox": {
+                "bundlePath": "/Oskari/packages/mapping/ol3/"
+              }
+            }
+          }
+        }
       },
       {
         "id" : "toolbar",
+        "startup": {
+          "title": "Toolbar OL3",
+          "bundlename": "toolbar",
+          "metadata": {
+            "Import-Bundle": {
+              "toolbar": {
+                "bundlePath": "/Oskari/packages/mapping/ol3/"
+              }
+            }
+          }
+        },
         "config" : {
           "basictools": false,
           "history":  false,
@@ -76,7 +138,19 @@
         }
       },
       { "id" : "publishedstatehandler" },
-      { "id" : "drawtools" },
+      { "id" : "drawtools",
+        "startup": {
+          "title": "Drawtools OL3",
+          "bundlename": "drawtools",
+          "metadata": {
+            "Import-Bundle": {
+              "drawtools": {
+                "bundlePath": "/Oskari/packages/mapping/ol3/"
+              }
+            }
+          }
+        }
+      },
       { "id" : "routingService" },
       { "id" : "rpc" }
     ]

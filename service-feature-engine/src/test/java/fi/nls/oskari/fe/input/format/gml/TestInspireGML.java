@@ -10,8 +10,7 @@ import fi.nls.oskari.fe.output.format.jsonld.JsonLdOutputProcessor;
 import fi.nls.oskari.fe.output.format.png.geotools.MapContentOutputProcessor;
 import groovy.lang.GroovyClassLoader;
 import groovy.lang.GroovyCodeSource;
-import fi.nls.oskari.log.LogFactory;
-import fi.nls.oskari.log.Logger;
+import org.apache.log4j.Logger;
 import org.geotools.styling.Style;
 import org.junit.Test;
 
@@ -25,7 +24,7 @@ import java.io.*;
 @Deprecated
 public class TestInspireGML extends TestHelper {
 
-    static final Logger logger = LogFactory.getLogger(TestInspireGML.class);
+    static final Logger logger = Logger.getLogger(TestInspireGML.class);
 
     interface TestOutputProcessor extends OutputProcessor {
 

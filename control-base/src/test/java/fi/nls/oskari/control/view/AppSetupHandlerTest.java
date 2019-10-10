@@ -1,16 +1,17 @@
 package fi.nls.oskari.control.view;
 
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.control.ActionConstants;
 import fi.nls.oskari.control.ActionParameters;
 import fi.nls.oskari.domain.Role;
 import fi.nls.oskari.domain.map.view.Bundle;
 import fi.nls.oskari.domain.map.view.View;
 import fi.nls.oskari.domain.map.view.ViewTypes;
-import fi.nls.oskari.map.analysis.service.AnalysisDbService;
 import fi.nls.oskari.map.view.BundleService;
-import fi.nls.oskari.map.view.BundleServiceMybatisImpl;
+import fi.nls.oskari.map.view.BundleServiceIbatisImpl;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
+import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
 import fi.nls.oskari.myplaces.MyPlacesService;
 import fi.nls.oskari.myplaces.MyPlacesServiceMybatisImpl;
 import fi.nls.oskari.service.UserService;
@@ -26,10 +27,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.oskari.map.userlayer.service.UserLayerDbService;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.PermissionServiceMybatisImpl;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
@@ -44,13 +41,12 @@ import static org.mockito.Mockito.mock;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(value = {UserService.class})
-@PowerMockIgnore({"com.sun.org.apache.xalan.*", "com.sun.org.apache.xerces.*", "javax.xml.*", "org.w3c.dom.*", "org.xml.*", "com.sun.org.apache.xml.*"})
 public class AppSetupHandlerTest extends JSONActionRouteTest {
 	
     private AppSetupHandler handler = null;
     private ViewService viewService = null;
     private MyPlacesService myPlaceService = null;
-    private PermissionService permissionsService = null;
+    private PermissionsService permissionsService = null;
     private UserService userService = null;
     private BundleService bundleService = null;
 
@@ -71,15 +67,13 @@ public class AppSetupHandlerTest extends JSONActionRouteTest {
         handler = new AppSetupHandler();
     	mockViewService();
         myPlaceService = mock(MyPlacesServiceMybatisImpl.class);
-        permissionsService = mock(PermissionServiceMybatisImpl.class);
+        permissionsService = mock(PermissionsServiceIbatisImpl.class);
         mockBundleService();
         mockUserService();
 
         // set mocked services
         handler.setViewService(viewService);
         handler.setMyPlacesService(myPlaceService);
-        handler.setUserLayerService(mock(UserLayerDbService.class));
-        handler.setAnalysisService(mock(AnalysisDbService.class));
         handler.setPermissionsService(permissionsService);
         handler.setBundleService(bundleService);
 
@@ -92,7 +86,7 @@ public class AppSetupHandlerTest extends JSONActionRouteTest {
     }
 
     private void mockViewService() {
-        viewService = mock(AppSetupServiceMybatisImpl.class);
+        viewService = mock(ViewServiceIbatisImpl.class);
         // add all bundles needed in test
         final View dummyView = ViewTestHelper.createMockView("framework.mapfull", "framework.infobox", "framework.publishedgrid");
         dummyView.setType(ViewTypes.USER);
@@ -103,7 +97,7 @@ public class AppSetupHandlerTest extends JSONActionRouteTest {
         doReturn(dummyView).when(viewService).getViewWithConfByUuId(VALUE_PARENT_UUID);
     }
     private void mockBundleService() {
-        bundleService = mock(BundleServiceMybatisImpl.class);
+        bundleService = mock(BundleServiceIbatisImpl.class);
         // add all bundles needed in test
         Bundle bundle = new Bundle();
         bundle.setName(BUNDLE_WHITELISTED);
@@ -117,7 +111,7 @@ public class AppSetupHandlerTest extends JSONActionRouteTest {
         doReturn(role).when(userService).getRoleByName(role.getName());
         Whitebox.setInternalState(UserService.class, "instance", userService);
     }
-
+    
     @Test
     public void testPublishFromTemplateSimpleInput() throws Exception {
 
@@ -179,6 +173,5 @@ public class AppSetupHandlerTest extends JSONActionRouteTest {
 
         assertNotNull("View should have bundle that has been whitelisted", view.getBundleByName(BUNDLE_WHITELISTED));
     }
-
+	
 }
-

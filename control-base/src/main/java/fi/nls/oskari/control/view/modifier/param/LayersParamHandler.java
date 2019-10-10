@@ -4,9 +4,6 @@ import fi.nls.oskari.annotation.OskariViewModifier;
 import fi.nls.oskari.view.modifier.ParamHandler;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
-import fi.nls.oskari.map.layer.externalid.OskariLayerExternalIdService;
-import fi.nls.oskari.map.layer.externalid.OskariLayerExternalIdServiceMybatisImpl;
-import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.view.modifier.ModifierException;
 import fi.nls.oskari.view.modifier.ModifierParams;
 import org.json.JSONArray;
@@ -17,6 +14,7 @@ import org.json.JSONObject;
 public class LayersParamHandler extends ParamHandler {
 
     private static final Logger log = LogFactory.getLogger(LayersParamHandler.class);
+    private static final String PARAM_LAYERS = "mapLayers";
     private static final String KEY_OPACITY = "opacity";
     private static final String KEY_STYLE = "style";
     private static final String KEY_ID = "id";
@@ -24,7 +22,6 @@ public class LayersParamHandler extends ParamHandler {
     private static final String KEY_SEL_LAYERS = "selectedLayers";
 
     private static final String PREFIX_MYPLACES = "myplaces_";
-    private static final OskariLayerExternalIdService EXTERNAL_ID_SERVICE = new OskariLayerExternalIdServiceMybatisImpl();
     
     public boolean handleParam(final ModifierParams params) throws ModifierException {
         if(params.getParamValue() == null) {
@@ -55,16 +52,8 @@ public class LayersParamHandler extends ParamHandler {
     }
     
     public static JSONObject getLayerJson(final String[] layerParam, final String referer) throws ModifierException {
-        String layerId = layerParam[0];
 
-        // Check if the layerId is the externalId of a maplayer
-        if (ConversionHelper.getInt(layerId, -1) == -1) {
-            Integer layerIdExt = EXTERNAL_ID_SERVICE.findByExternalId(layerId);
-            if (layerIdExt != null) {
-                // If it is, use the maplayer id instead
-                layerId = layerIdExt.toString();
-            }
-        }
+        final String layerId = layerParam[0];
 
         // Skipping myplaces_.* as they get created in JS
         if (layerId.startsWith(PREFIX_MYPLACES)) {

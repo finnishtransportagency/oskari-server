@@ -4,7 +4,7 @@
     <parent>
         <groupId>fi.nls.oskari</groupId>
         <artifactId>oskari-parent</artifactId>
-        <version>1.53.1</version>
+        <version>1.46.0</version>
     </parent>
     <groupId>fi.nls.oskari.service</groupId>
     <artifactId>service-datamodel</artifactId>
@@ -24,12 +24,8 @@
 
         <dependency>
             <groupId>com.vividsolutions</groupId>
-            <artifactId>jts-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.vividsolutions</groupId>
-            <artifactId>jts-io</artifactId>
+            <artifactId>jts</artifactId>
+            <version>1.13</version>
         </dependency>
 
         <dependency>
@@ -64,12 +60,12 @@
             <version>2.1.0</version>
             <scope>test</scope>
         </dependency>
-        <!-- For logging -->
         <dependency>
-            <groupId>fi.nls.oskari.service</groupId>
-            <artifactId>oskari-base</artifactId>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.jboss.forge.roaster</groupId>
             <artifactId>roaster-api</artifactId>

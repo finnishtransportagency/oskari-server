@@ -1,5 +1,9 @@
 package fi.nls.oskari.control.data;
 
+import fi.mml.map.mapwindow.util.OskariLayerWorker;
+import fi.mml.portti.domain.permissions.Permissions;
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.analysis.AnalysisHelper;
 import fi.nls.oskari.analysis.AnalysisParser;
 import fi.nls.oskari.annotation.OskariActionRoute;
@@ -17,35 +21,33 @@ import fi.nls.oskari.map.analysis.domain.AnalysisMethodParams;
 import fi.nls.oskari.map.analysis.domain.SpatialJoinStatisticsMethodParams;
 import fi.nls.oskari.map.analysis.service.AnalysisDataService;
 import fi.nls.oskari.map.analysis.service.AnalysisWebProcessingService;
+import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.service.OskariComponentManager;
+import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.permission.domain.Permission;
+import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.UserService;
-import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.model.*;
-import org.oskari.service.util.ServiceFactory;
 
 import java.net.URL;
 import java.util.*;
 
 @OskariActionRoute("CreateAnalysisLayer")
-public class CreateAnalysisLayerHandler extends RestActionHandler {
+public class CreateAnalysisLayerHandler extends ActionHandler {
 
     private static final Logger log = LogFactory
             .getLogger(CreateAnalysisLayerHandler.class);
     private AnalysisDataService analysisDataService = new AnalysisDataService();
     private AnalysisWebProcessingService wpsService = new AnalysisWebProcessingService();
     private AnalysisParser analysisParser = new AnalysisParser();
-    private OskariLayerService mapLayerService = ServiceFactory.getMapLayerService();
+    private OskariLayerService mapLayerService = new OskariLayerServiceIbatisImpl();
 
-    private PermissionService permissionsService;
+    private static PermissionsService permissionsService = new PermissionsServiceIbatisImpl();
 
     private static final String PARAM_ANALYSE = "analyse";
     private static final String PARAM_FILTER1 = "filter1";
@@ -79,28 +81,13 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
 
     final private static String GEOSERVER_PROXY_BASE_URL = PropertyUtil.getOptional("analysis.baseproxy.url");
 
-    @Override
-    public void init() {
-        super.init();
-        permissionsService = OskariComponentManager.getComponentOfType(PermissionService.class);
-    }
-
-    private AnalysisLayer getAggregateLayer(String analyse, String filter1, String filter2,
-                                            String baseUrl, AnalysisLayer analysisLayer, String outputFormat) throws ActionParamsException {
-        try {
-            return analysisParser.parseSwitch2UnionLayer(analysisLayer, analyse, filter1, filter2, baseUrl, outputFormat);
-        } catch (ServiceException e) {
-            throw new ActionParamsException(ERROR_UNABLE_TO_PROCESS_AGGREGATE_UNION, e.getMessage());
-        }
-    }
-
     /**
      * Handles action_route CreateAnalysisLayer
      *
      * @param params Ajax request parameters
      *               **********************************************************************
      */
-    public void handlePost(ActionParameters params) throws ActionException {
+    public void handleAction(ActionParameters params) throws ActionException {
         params.requireLoggedInUser();
 
         final String analyse = params.getRequiredParam(PARAM_ANALYSE, ERROR_ANALYSE_PARAMETER_MISSING);
@@ -127,7 +114,7 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
             // no WPS for merge analysis
             try {
                 analysis = analysisDataService.mergeAnalysisData(
-                        analysisLayer, analyse, params.getUser());
+                    analysisLayer, analyse, params.getUser());
             } catch (ServiceException e) {
                 throw new ActionException(ERROR_UNABLE_TO_MERGE_ANALYSIS_DATA, e);
             }
@@ -213,20 +200,20 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
         analysisLayer.setNativeFields(analysis);
 
         // copy permissions from source layer to new analysis
-        final Optional<Resource> sourceResource =
+        final Resource sourceResource =
                 getSourcePermission(analysisParser.getSourceLayerId(analyseJson), params.getUser());
-        if(sourceResource.isPresent()) {
+        if(sourceResource != null) {
             final Resource analysisResource = new Resource();
             analysisResource.setType(AnalysisLayer.TYPE);
             analysisResource.setMapping("analysis", Long.toString(analysis.getId()));
-            for(Permission p : sourceResource.get().getPermissions()) {
+            for(Permission p : sourceResource.getPermissions()) {
                 // check if user has role matching permission?
-                if(p.isOfType(PermissionType.PUBLISH) || p.isOfType(PermissionType.VIEW_PUBLISHED) || p.isOfType(PermissionType.DOWNLOAD)) {
+                if(p.isOfType(Permissions.PERMISSION_TYPE_PUBLISH) || p.isOfType(Permissions.PERMISSION_TYPE_VIEW_PUBLISHED) || p.isOfType(Permissions.PERMISSION_TYPE_DOWNLOAD)) {
                     analysisResource.addPermission(p.clonePermission());
                 }
             }
             log.debug("Trying to save permissions for analysis", analysisResource, analysisResource.getPermissions());
-            permissionsService.insertResource(analysisResource);
+            permissionsService.saveResourcePermissions(analysisResource);
         }
         else {
             log.warn("Couldn't get source permissions for analysis, result will have none");
@@ -245,22 +232,23 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
         }
         JSONHelper.putValue(analysisLayerJSON, "mergeLayers", mlayers);
 
-        Set<String> publishPermission = permissionsService.getResourcesWithGrantedPermissions(ResourceType.analysislayer, params.getUser(), PermissionType.PUBLISH);
-        Set<String> downloadPermission = permissionsService.getResourcesWithGrantedPermissions(ResourceType.analysislayer, params.getUser(), PermissionType.DOWNLOAD);
+        Set<String> permissionsList = permissionsService.getPublishPermissions(AnalysisLayer.TYPE);
+        Set<String> downloadPermissionsList = permissionsService.getDownloadPermissions(AnalysisLayer.TYPE);
+        Set<String> editAccessList = null;
         String permissionKey = "analysis+" + analysis.getId();
+        JSONObject permissions = OskariLayerWorker.getPermissions(params.getUser(), permissionKey, permissionsList, downloadPermissionsList, editAccessList);
+        JSONHelper.putValue(analysisLayerJSON, "permissions", permissions);
 
-        JSONHelper.putValue(analysisLayerJSON, "permissions",
-                AnalysisHelper.getAnalysisPermissions(
-                        publishPermission.contains(permissionKey),
-                        downloadPermission.contains(permissionKey)));
-
-        AuditLog.user(params.getClientIp(), params.getUser())
-                .withParam("id", analysisLayer.getId())
-                .withParam("uiName", analysisLayer.getName())
-                // there can be multiple srcId at least in methodParams.layerId is one place that can have it
-                .withParam("srcId", analyseJson.opt("layerId"))
-                .added(AuditLog.ResourceType.ANALYSIS);
         ResponseHelper.writeResponse(params, analysisLayerJSON);
+    }
+
+    private AnalysisLayer getAggregateLayer(String analyse, String filter1, String filter2,
+                                      String baseUrl, AnalysisLayer analysisLayer, String outputFormat) throws ActionParamsException {
+        try {
+            return analysisParser.parseSwitch2UnionLayer(analysisLayer, analyse, filter1, filter2, baseUrl, outputFormat);
+        } catch (ServiceException e) {
+            throw new ActionParamsException(ERROR_UNABLE_TO_PROCESS_AGGREGATE_UNION, e.getMessage());
+        }
     }
 
     private AnalysisLayer getAnalysisLayer(JSONObject analyseJson, String filter1, String filter2, String baseUrl,
@@ -291,9 +279,9 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
         return featureSet;
     }
 
-    private Optional<Resource> getSourcePermission(final String layerId, final User user) throws ActionParamsException {
+    private Resource getSourcePermission(final String layerId, final User user) {
         if(layerId == null) {
-            throw new ActionParamsException("Missing source layer id");
+            return null;
         }
 
         if (layerId.startsWith(AnalysisParser.ANALYSIS_LAYER_PREFIX)) {
@@ -301,38 +289,36 @@ public class CreateAnalysisLayerHandler extends RestActionHandler {
             final Resource resource = new Resource();
             resource.setType(AnalysisLayer.TYPE);
             resource.setMapping("analysis", Long.toString(AnalysisHelper.getAnalysisIdFromLayerId(layerId)));
-            return permissionsService.findResource(ResourceType.analysislayer, Long.toString(AnalysisHelper.getAnalysisIdFromLayerId(layerId)));
+            return permissionsService.findResource(resource);
         }
         else if (layerId.startsWith(AnalysisParser.MYPLACES_LAYER_PREFIX)  || layerId.equals("-1") || layerId.startsWith(AnalysisParser.USERLAYER_PREFIX)) {
 
             final Resource resource = new Resource();
             // permission to publish for self
             final Permission permPublish = new Permission();
-            permPublish.setUserId((int) user.getId());
-            permPublish.setType(PermissionType.PUBLISH);
+            permPublish.setExternalType(Permissions.EXTERNAL_TYPE_USER);
+            permPublish.setExternalId("" + user.getId());
+            permPublish.setType(Permissions.PERMISSION_TYPE_PUBLISH);
             resource.addPermission(permPublish);
             try {
                 // add VIEW_PUBLISHED for all roles currently in the system
                 for(Role role: UserService.getInstance().getRoles()) {
                     final Permission perm = new Permission();
-                    perm.setRoleId((int) role.getId());
-                    perm.setType(PermissionType.VIEW_PUBLISHED);
+                    perm.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+                    perm.setExternalId("" + role.getId());
+                    perm.setType(Permissions.PERMISSION_TYPE_VIEW_PUBLISHED);
                     resource.addPermission(perm);
                 }
-            } catch (Exception e) {
+            }catch (Exception e) {
                 log.error("Something went wrong when generating source permissions for myplaces layer or temporary or user data layer");
 
             }
-            return Optional.of(resource);
+            return resource;
         }
         // default to usual layer
-        int id = ConversionHelper.getInt(layerId, -1);
-        if (id == -1) {
-            throw new ActionParamsException("Invalid id: " + layerId);
-        }
-        final OskariLayer layer = mapLayerService.find(id);
+        final OskariLayer layer = mapLayerService.find(layerId);
         // copy permissions from source layer to new analysis
-        return permissionsService.findResource(ResourceType.maplayer, Integer.toString(layer.getId()));
+        return permissionsService.getResource(Permissions.RESOURCE_TYPE_MAP_LAYER, new OskariLayerResource(layer).getMapping());
     }
 
 

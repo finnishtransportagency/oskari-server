@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>fi.nls.oskari</groupId>
 		<artifactId>oskari-parent</artifactId>
-        <version>1.53.1</version>
+        <version>1.46.0</version>
 	</parent>
 	<groupId>fi.nls.oskari.service</groupId>
 	<artifactId>oskari-feature-engine</artifactId>
@@ -55,6 +55,10 @@
 			<groupId>fi.nls.oskari.service</groupId>
 			<artifactId>service-datamodel</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>fi.nls.oskari.service</groupId>
+            <artifactId>oskari-wfs</artifactId>
+        </dependency>
 		<dependency>
 			<groupId>org.geotools</groupId>
 			<artifactId>gt-main</artifactId>
@@ -155,12 +159,8 @@
 
 		<dependency>
 			<groupId>com.vividsolutions</groupId>
-			<artifactId>jts-core</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>com.vividsolutions</groupId>
-			<artifactId>jts-io</artifactId>
+			<artifactId>jts</artifactId>
+			<version>1.13</version>
 		</dependency>
 
 		<dependency>
@@ -177,6 +177,11 @@
 		<dependency>
 			<groupId>com.fasterxml.jackson.dataformat</groupId>
 			<artifactId>jackson-dataformat-xml</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>log4j</groupId>
+			<artifactId>log4j</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 	</dependencies>

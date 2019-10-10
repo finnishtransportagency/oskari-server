@@ -14,7 +14,7 @@ import java.util.*;
  * Not thread-safe implementation of ViewService
  * Stores the objects in an ArrayList
  */
-public class ViewServiceMemory extends ViewService {
+public class ViewServiceMemory implements ViewService {
 
     private static final Logger LOG = LogFactory.getLogger(ViewServiceMemory.class);
 
@@ -43,6 +43,7 @@ public class ViewServiceMemory extends ViewService {
         return -1;
     }
 
+    @Override
     public View find(int id) {
         for (View item : list) {
             if (item.getId() == id) {
@@ -52,6 +53,7 @@ public class ViewServiceMemory extends ViewService {
         return null;
     }
 
+    @Override
     public View find(String id) {
         if (id != null && !id.isEmpty()) {
             for (View item : list) {
@@ -63,10 +65,12 @@ public class ViewServiceMemory extends ViewService {
         return null;
     }
 
+    @Override
     public List<Object> findAll() {
         return new ArrayList<Object>(list);
     }
 
+    @Override
     public void delete(int id) {
         int i = indexOf(id);
         if (i >= 0) {
@@ -74,16 +78,19 @@ public class ViewServiceMemory extends ViewService {
         }
     }
 
+    @Override
     public void delete(Map<String, String> parameterMap) {
         // Do nothing
     }
 
+    @Override
     public void update(Object layerClass) {
         if (layerClass instanceof View) {
             updateView((View) layerClass);
         }
     }
 
+    @Override
     public int insert(Object layerClass) {
         if (layerClass instanceof View) {
             return (int) addView((View) layerClass);
@@ -261,6 +268,14 @@ public class ViewServiceMemory extends ViewService {
     @Override
     public void updatePublishedView(View view) throws ViewException {
         // TODO: implement
+    }
+
+    @Override
+    public void addBundleForView(long viewId, Bundle bundle) {
+        View view = find((int) viewId);
+        if (view != null) {
+            view.addBundle(bundle);
+        }
     }
 
     @Override

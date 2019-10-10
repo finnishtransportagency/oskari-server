@@ -51,22 +51,19 @@ public class ViewHelper {
      * Checks if it's ok to continue loading requested map based on referer/views pubdomain.
      * @param referer from headers
      * @param pubdomain domain the map is published to
-     * @return true if referer or pubdomain doesn't exist,
-     *  ends with domains in UNRESTRICTED_USAGE_DOMAINS or the domain defined for the view.
+     * @return true if referer doesn't exist, ends with domains in UNRESTRICTED_USAGE_DOMAINS or the domain defined for the view.
      */
     public static boolean isRefererDomain(final String referer, final String pubdomain) {
-        boolean refererExists = referer != null && !referer.isEmpty();
-        boolean domainRestrictionExists = pubdomain != null && !pubdomain.isEmpty();
-        if (!refererExists || !domainRestrictionExists) {
+        if(referer == null || referer.isEmpty()) {
             return true;
         }
         log.debug("Unrestricted domains:", UNRESTRICTED_USAGE_DOMAINS);
         for (String domain : UNRESTRICTED_USAGE_DOMAINS) {
-            if(domain.equals("*") || referer.endsWith(domain.toLowerCase())) {
+            if(domain.equals("*") || referer.endsWith(domain)) {
                 return true;
             }
         }
-        return referer.endsWith(pubdomain.toLowerCase());
+        return referer.endsWith(pubdomain);
     }
 
     public static JSONObject getConfiguration(final View view) throws ViewException {

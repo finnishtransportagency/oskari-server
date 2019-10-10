@@ -1,7 +1,7 @@
 package fi.nls.oskari.map.analysis.service;
 
 import fi.nls.oskari.db.DatasourceHelper;
-import fi.nls.oskari.domain.map.UserDataStyle;
+import fi.nls.oskari.domain.map.analysis.AnalysisStyle;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.mybatis.MyBatisHelper;
@@ -44,7 +44,7 @@ public class AnalysisStyleDbServiceMybatisImpl implements AnalysisStyleDbService
         final Environment environment = new Environment("development", transactionFactory, dataSource);
 
         final Configuration configuration = new Configuration(environment);
-        configuration.getTypeAliasRegistry().registerAlias(UserDataStyle.class);
+        configuration.getTypeAliasRegistry().registerAlias(AnalysisStyle.class);
         configuration.setLazyLoadingEnabled(true);
         configuration.addMapper(AnalysisStyleMapper.class);
 
@@ -57,7 +57,7 @@ public class AnalysisStyleDbServiceMybatisImpl implements AnalysisStyleDbService
      * @throws ServiceException if service is not initialized properly
      *         or if something goes wrong inserting the analysis style
      */
-    public long insertAnalysisStyleRow(UserDataStyle analysisStyle)
+    public long insertAnalysisStyleRow(AnalysisStyle analysisStyle)
             throws ServiceException {
         if (factory == null) {
             throw new ServiceException("Service not initialized");

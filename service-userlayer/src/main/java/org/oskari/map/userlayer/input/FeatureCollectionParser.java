@@ -10,6 +10,5 @@ import fi.nls.oskari.service.ServiceException;
 public interface FeatureCollectionParser {
 
     public SimpleFeatureCollection parse(File file, CoordinateReferenceSystem sourceCRS, CoordinateReferenceSystem targetCRS) throws ServiceException;
-    public String getSuffix();
 
 }

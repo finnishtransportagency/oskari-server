@@ -149,8 +149,7 @@
                 url: "/action?action_route=UserPasswordReset",
                 type: 'POST',
                 data: {
-                    email: '${email}',
-                    _csrf: '${_csrf.token}'
+                    email: '${email}'
                 },
                 success: function () {
                     showModal('<spring:message javaScriptEscape="true" code="user.registration.passwordrecovery.sent"/>');
@@ -181,8 +180,7 @@
                 type: 'PUT',
                 data: {
                     firstname: jQuery('#firstname').val(),
-                    lastname: jQuery('#lastname').val(),
-                    _csrf: '${_csrf.token}'
+                    lastname: jQuery('#lastname').val()
                 },
                 success: function () {
                     showModal('<spring:message javaScriptEscape="true" code="user.registration.edit.success"/>', true);
@@ -201,10 +199,10 @@
             $("#deleteDialog").on("show.bs.modal", function () {
                 $("#deleteOk").on("click", function (e) {
                     jQuery.ajax({
-                        url: "/action?action_route=UserRegistration&_csrf=${_csrf.token}",
+                        url: "/action?action_route=UserRegistration",
                         type: 'DELETE',
                         success: function () {
-                            window.location.href = '/';
+                            window.location.href = '/logout';
                         },
                         error: function () {
                             errorMsg("#errorGeneral", '<spring:message javaScriptEscape="true" code="user.registration.error.generic"/>');

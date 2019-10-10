@@ -5,12 +5,14 @@ import fi.nls.oskari.domain.User;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.RequestHelper;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -224,23 +226,6 @@ public class ActionParameters {
         return ConversionHelper.getBoolean(getHttpParam(key), defaultValue);
     }
     /**
-     * Returns a parameter as JSONObject
-     * @param key parameter name for a JSONObject parameter
-     * @return param value as a JSONObject or null if parameter wasn't present
-     * @throws ActionParamsException if param was present, but the value couldn't be parsed as a JSONObject
-     */
-    public JSONObject getHttpParamAsJSON(final String key) throws ActionParamsException {
-        String json = getHttpParam(key);
-        if(json == null) {
-            return null;
-        }
-        try {
-            return new JSONObject(json);
-        } catch (JSONException ex) {
-            throw new ActionParamsException("Expected param '" + key + "' to have a JSON object as value");
-        }
-    }
-    /**
      * Returns value of a header field matching given key
      * @param key header name
      * @return
@@ -255,10 +240,7 @@ public class ActionParameters {
      * @return
      */
     public String getClientIp() {
-        return getClientIp(getRequest());
-    }
-
-    public static String getClientIp(HttpServletRequest hsr) {
+        final HttpServletRequest hsr = getRequest();
         final String ip = hsr.getHeader("x-forwarded-for");
         try {
             return ip != null ? ip : hsr.getRemoteAddr();

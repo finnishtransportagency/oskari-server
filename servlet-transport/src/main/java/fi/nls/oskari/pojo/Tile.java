@@ -1,6 +1,6 @@
 package fi.nls.oskari.pojo;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 /**
  * Handles user's map's size

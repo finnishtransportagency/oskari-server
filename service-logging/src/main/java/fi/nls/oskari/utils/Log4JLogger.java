@@ -1,8 +1,12 @@
 package fi.nls.oskari.utils;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.LogManager;
+import fi.nls.oskari.util.IOHelper;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PropertyConfigurator;
+
+import java.io.InputStream;
+import java.util.Properties;
 
 /**
  * Log4J logger implementation
@@ -10,18 +14,53 @@ import org.apache.logging.log4j.LogManager;
  */
 public class Log4JLogger extends fi.nls.oskari.log.Logger {
 
-    private Logger log;
+    private Logger log = null;
+    private static boolean propertiesConfigured = false;
+    private static final String FQCN = Log4JLogger.class.getName();
 
     public Log4JLogger(final String name) {
-        log = LogManager.getLogger(name);
+        configure();
+        log = Logger.getLogger(name);
     }
 
     private void log(Level level, Object msg) {
-        log.log(level, msg);
+        log(level, msg, null);
     }
 
     private void log(Level level, Object msg, Throwable t) {
-        log.log(level, msg, t);
+        log.log(FQCN, level, msg, t);
+    }
+
+    private void configure() {
+        if(propertiesConfigured) {
+            return;
+        }
+        InputStream inStream = null;
+        try
+        {
+            inStream = this.getClass().getClassLoader().getResourceAsStream("/log4j.properties");
+            final Properties props = new Properties();
+            props.load(inStream);
+            PropertyConfigurator.configure(props);
+            propertiesConfigured = true;
+        }
+        catch(Exception e)
+        {
+            if(inStream != null) {
+                System.err.println("Error reading properties from 'log4j.properties': " + e.getMessage());
+            }
+        }
+        finally {
+            IOHelper.close(inStream);
+        }
+        /*
+        // To configure with xml you need this:
+        try {
+            org.apache.log4j.xml.DOMConfigurator.configure("/log4j.xml");
+        } catch (Exception ex) {
+            System.err.println("Exception configuring with log4j.xml: " + ex.getMessage());
+        }
+         */
     }
 
     public boolean isDebugEnabled() {

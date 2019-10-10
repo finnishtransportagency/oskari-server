@@ -1,6 +1,9 @@
 package fi.nls.oskari.control.statistics;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -84,22 +87,16 @@ public class RegionSetHelper {
         }
         LOG.debug("Trying to read GeoJSON resource file from:", path);
         DefaultFeatureCollection fc = new DefaultFeatureCollection();
-
-        try (InputStream in = RegionSetHelper.class.getResourceAsStream(path);
-             Reader utf8Reader = new InputStreamReader(in, IOHelper.CHARSET_UTF8)) {
+        try (InputStream in = RegionSetHelper.class.getResourceAsStream(path)) {
             if (in == null) {
                 LOG.warn("Could not find resource for path:", path);
                 throw new FileNotFoundException("Could not find resource");
             }
-            try (FeatureIterator<SimpleFeature> it = FJ.streamFeatureCollection(utf8Reader)) {
+            try (FeatureIterator<SimpleFeature> it = FJ.streamFeatureCollection(in)) {
                 while (it.hasNext()) {
                     SimpleFeature f = it.next();
-                    try {
-                        transform(f, transform);
-                        fc.add(f);
-                    } catch (Exception e) {
-                        LOG.debug(e, "Invalid region", f);
-                    }
+                    transform(f, transform);
+                    fc.add(f);
                 }
             }
         }
@@ -120,8 +117,7 @@ public class RegionSetHelper {
         if (transform != null) {
             Object geometry = f.getDefaultGeometry();
             if (geometry != null && geometry instanceof Geometry) {
-                Geometry geom = JTS.transform((Geometry) geometry, transform);
-                f.setDefaultGeometry(geom);
+                JTS.transform((Geometry) geometry, transform);
             }
         }
     }
@@ -158,8 +154,7 @@ public class RegionSetHelper {
             final List<Region> nameCodes = new ArrayList<>();
             while (it.hasNext()) {
                 final SimpleFeature feature = it.next();
-                // id might be numeric on source data
-                final String id = feature.getAttribute(idProperty).toString();
+                final String id = (String) feature.getAttribute(idProperty);
                 final String name = (String) feature.getAttribute(nameProperty);
                 if (id == null || name == null) {
                     LOG.warn("Couldn't find id (", idProperty, ") and/or name(", nameProperty,

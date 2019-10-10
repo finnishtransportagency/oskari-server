@@ -44,8 +44,6 @@ public class MyplacesHelper {
 
             ds.connectionParameters.user = info.user;
             ds.connectionParameters.passwd = info.pass;
-            ds.connectionParameters.host = info.getHost();
-            ds.connectionParameters.port = info.getPort();
             ds.connectionParameters.database = info.getDBName();
             // in 2.5.2 namespace = NAMESPACE, in 2.7.1 it needs to be the uri?
             ds.connectionParameters.namespace = ns.uri;
@@ -62,7 +60,7 @@ public class MyplacesHelper {
             FeatureType featureCategories = new FeatureType();
             featureCategories.enabled = true;
             featureCategories.name = "categories";
-            GeoserverPopulator.resolveCRS(featureCategories, srs);
+            featureCategories.srs = srs;
 
             geoserver.createFeatureType(featureCategories, GeoserverPopulator.NAMESPACE, storeName);
             LOG.info("Added featuretype:", featureCategories);
@@ -75,7 +73,7 @@ public class MyplacesHelper {
             FeatureType featurePlaces = new FeatureType();
             featurePlaces.enabled = true;
             featurePlaces.name = "my_places";
-            GeoserverPopulator.resolveCRS(featurePlaces, srs);
+            featurePlaces.srs = srs;
 
             geoserver.createFeatureType(featurePlaces, GeoserverPopulator.NAMESPACE, storeName);
             LOG.info("Added featuretype:", featurePlaces);
@@ -88,7 +86,7 @@ public class MyplacesHelper {
         try {
             featurePlacesCategories.enabled = true;
             featurePlacesCategories.name = "my_places_categories";
-            GeoserverPopulator.resolveCRS(featurePlacesCategories, srs);
+            featurePlacesCategories.srs = srs;
 
             geoserver.createFeatureType(featurePlacesCategories, GeoserverPopulator.NAMESPACE, storeName);
             LOG.info("Added featuretype:", featurePlacesCategories);

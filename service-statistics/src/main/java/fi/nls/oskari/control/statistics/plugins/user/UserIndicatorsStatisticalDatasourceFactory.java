@@ -7,9 +7,9 @@ import fi.nls.oskari.control.statistics.plugins.db.StatisticalDatasource;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 
-@Oskari(UserIndicatorsStatisticalDatasourceFactory.TYPE)
+@Oskari("UserStats")
 public class UserIndicatorsStatisticalDatasourceFactory extends StatisticalDatasourceFactory {
-    public static final String TYPE = "UserStats";
+    private final static Logger LOG = LogFactory.getLogger(UserIndicatorsStatisticalDatasourceFactory.class);
 
     public StatisticalDatasourcePlugin create(StatisticalDatasource source) {
         UserIndicatorsStatisticalDatasourcePlugin plugin = new UserIndicatorsStatisticalDatasourcePlugin();

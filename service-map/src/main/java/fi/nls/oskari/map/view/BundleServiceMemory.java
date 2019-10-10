@@ -10,7 +10,7 @@ import java.util.Map;
  * Not thread-safe implementation of BundleService
  * Stores the objects in an ArrayList
  */
-public class BundleServiceMemory extends BundleService {
+public class BundleServiceMemory implements BundleService {
 
     private final List<Bundle> list = new ArrayList<>();
 
@@ -36,6 +36,7 @@ public class BundleServiceMemory extends BundleService {
         return -1;
     }
 
+    @Override
     public Bundle find(int id) {
         for (Bundle item : list) {
             if (item.getBundleId() == id) {
@@ -45,6 +46,7 @@ public class BundleServiceMemory extends BundleService {
         return null;
     }
 
+    @Override
     public Bundle find(String id) {
         if (id != null && !id.isEmpty()) {
             for (Bundle item : list) {
@@ -56,10 +58,12 @@ public class BundleServiceMemory extends BundleService {
         return null;
     }
 
+    @Override
     public List<Bundle> findAll() {
         return new ArrayList<>(list);
     }
 
+    @Override
     public void update(Bundle layerClass) {
         int i = indexOf(layerClass.getName());
         if (i >= 0) {
@@ -67,6 +71,7 @@ public class BundleServiceMemory extends BundleService {
         }
     }
 
+    @Override
     public int insert(Bundle layerClass) {
         int seq = list.size();
         list.add(layerClass);
@@ -74,6 +79,7 @@ public class BundleServiceMemory extends BundleService {
         return seq;
     }
 
+    @Override
     public void delete(int id) {
         int i = indexOf(id);
         if (i >= 0) {
@@ -81,6 +87,7 @@ public class BundleServiceMemory extends BundleService {
         }
     }
 
+    @Override
     public void delete(Map<String, String> parameterMap) {
         // Do nothing
     }

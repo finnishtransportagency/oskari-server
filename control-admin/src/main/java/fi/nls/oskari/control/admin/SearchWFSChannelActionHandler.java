@@ -12,15 +12,13 @@ import fi.nls.oskari.search.channel.WFSChannelHandler;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
-import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import fi.nls.oskari.wfs.WFSSearchChannelsConfiguration;
 import fi.nls.oskari.wfs.WFSSearchChannelsService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -62,8 +60,9 @@ public class SearchWFSChannelActionHandler extends RestActionHandler {
         try {
             for(WFSSearchChannelsConfiguration channel : channelService.findChannels()) {
                 JSONObject channelJSON = channel.getAsJSONObject();
-                List<Integer> layerIds = Collections.singletonList(channel.getWFSLayerId());
-                JSONObject userLayers = OskariLayerWorker.getListOfMapLayersByIdList(layerIds, params.getUser(), params.getLocale().getLanguage(), params.getHttpParam(PARAM_SRS));
+                List<String> layerIds = new ArrayList<String>();
+                layerIds.add(String.valueOf(channel.getWFSLayerId()));
+                JSONObject userLayers = OskariLayerWorker.getListOfMapLayersById(layerIds, params.getUser(), params.getLocale().getLanguage(), params.getHttpParam(PARAM_SRS));
                 JSONArray layers = userLayers.getJSONArray(OskariLayerWorker.KEY_LAYERS);
 
                 if(layers.length() > 0){
@@ -93,11 +92,6 @@ public class SearchWFSChannelActionHandler extends RestActionHandler {
         try {
             JSONObject response = new JSONObject();
             channelService.delete(channelId);
-
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", channelId)
-                    .withMsg("WFS Search channel")
-                    .deleted(AuditLog.ResourceType.SEARCH);
             JSONHelper.putValue(response, "success", true);
             ResponseHelper.writeResponse(params, response);
         } catch (Exception ex) {
@@ -116,12 +110,6 @@ public class SearchWFSChannelActionHandler extends RestActionHandler {
 
             JSONObject response = new JSONObject();
             channelService.update(conf);
-
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", conf.getId())
-                    .withParam("name", conf.getName(PropertyUtil.getDefaultLanguage()))
-                    .withMsg("WFS Search channel")
-                    .updated(AuditLog.ResourceType.SEARCH);
             JSONHelper.putValue(response, "success", true);
             ResponseHelper.writeResponse(params, response);
         } catch (Exception ex) {
@@ -137,11 +125,6 @@ public class SearchWFSChannelActionHandler extends RestActionHandler {
         try {
             WFSSearchChannelsConfiguration conf = parseConfig(params);
             long newId = channelService.insert(conf);
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", conf.getId())
-                    .withParam("name", conf.getName(PropertyUtil.getDefaultLanguage()))
-                    .withMsg("WFS Search channel")
-                    .added(AuditLog.ResourceType.SEARCH);
             JSONObject response = new JSONObject();
             JSONHelper.putValue(response, "success", newId > 0);
             ResponseHelper.writeResponse(params, response);

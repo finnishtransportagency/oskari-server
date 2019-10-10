@@ -1,28 +1,33 @@
 package fi.nls.oskari.control.layer;
 
+import fi.mml.map.mapwindow.service.db.OskariMapLayerGroupService;
+import fi.nls.oskari.service.capabilities.OskariLayerCapabilities;
 import fi.mml.map.mapwindow.service.wms.LayerNotFoundInCapabilitiesException;
 import fi.mml.map.mapwindow.service.wms.WebMapService;
 import fi.mml.map.mapwindow.service.wms.WebMapServiceParseException;
 import fi.mml.map.mapwindow.util.OskariLayerWorker;
+import fi.mml.portti.domain.permissions.Permissions;
+import fi.mml.portti.service.db.permissions.PermissionsService;
 import fi.nls.oskari.annotation.OskariActionRoute;
 import fi.nls.oskari.cache.JedisManager;
 import fi.nls.oskari.control.*;
+import fi.nls.oskari.domain.User;
+import fi.nls.oskari.domain.map.MaplayerGroup;
 import fi.nls.oskari.domain.map.DataProvider;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.domain.map.wfs.WFSLayerConfiguration;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
+import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.layer.DataProviderService;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLink;
-import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLinkService;
 import fi.nls.oskari.map.view.ViewService;
 import fi.nls.oskari.map.view.util.ViewHelper;
+import fi.nls.oskari.permission.domain.Permission;
 import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.capabilities.CapabilitiesCacheService;
 import fi.nls.oskari.service.capabilities.OskariLayerCapabilitiesHelper;
 import fi.nls.oskari.util.*;
-import org.oskari.log.AuditLog;
 import fi.nls.oskari.wfs.GetGtWFSCapabilities;
 import fi.nls.oskari.wfs.WFSLayerConfigurationService;
 import fi.nls.oskari.wfs.util.WFSParserConfigs;
@@ -30,15 +35,12 @@ import fi.nls.oskari.wmts.WMTSCapabilitiesParser;
 import fi.nls.oskari.wmts.domain.WMTSCapabilities;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.oskari.permissions.model.*;
 import org.oskari.service.util.ServiceFactory;
-import org.oskari.service.wfs3.WFS3Service;
 
 import javax.servlet.http.HttpServletRequest;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static fi.nls.oskari.control.ActionConstants.PARAM_SRS;
 
@@ -46,7 +48,7 @@ import static fi.nls.oskari.control.ActionConstants.PARAM_SRS;
  * Admin insert/update of WMS map layer
  */
 @OskariActionRoute("SaveLayer")
-public class SaveLayerHandler extends AbstractLayerAdminHandler {
+public class SaveLayerHandler extends ActionHandler {
 
     private class SaveResult {
         long layerId = -1;
@@ -56,8 +58,9 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
     private OskariLayerService mapLayerService = ServiceFactory.getMapLayerService();
     private ViewService viewService = ServiceFactory.getViewService();
     private WFSLayerConfigurationService wfsLayerService = ServiceFactory.getWfsLayerService();
+    private PermissionsService permissionsService = ServiceFactory.getPermissionsService();
     private DataProviderService dataProviderService = ServiceFactory.getDataProviderService();
-    private OskariLayerGroupLinkService layerGroupLinkService = ServiceFactory.getOskariLayerGroupLinkService();
+    private OskariMapLayerGroupService oskariMapLayerGroupService = ServiceFactory.getOskariMapLayerGroupService();
     private CapabilitiesCacheService capabilitiesService = ServiceFactory.getCapabilitiesCacheService();
     private WFSParserConfigs wfsParserConfigs = new WFSParserConfigs();
     private static final Logger LOG = LogFactory.getLogger(SaveLayerHandler.class);
@@ -88,7 +91,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
     private static final String PARAM_CAPABILITIES_UPDATE_RATE_SEC ="capabilitiesUpdateRateSec";
     private static final String PARAM_ATTRIBUTES ="attributes";
     private static final String PARAM_PARAMS ="params";
-    private static final String PARAM_OPTIONS ="options";
     private static final String PARAM_REALTIME ="realtime";
     private static final String PARAM_REFRESH_RATE ="refreshRate";
     private static final String PARAM_GML2_SEPARATOR = "GML2Separator";
@@ -134,10 +136,9 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
 
     private static final String OSKARI_FEATURE_ENGINE = "oskari-feature-engine";
     private static final String WFS1_1_0_VERSION = "1.1.0";
-    private static final String WFS3_0_0_VERSION = "3.0.0";
 
     @Override
-    public void handlePost(ActionParameters params) throws ActionException {
+    public void handleAction(ActionParameters params) throws ActionException {
 
         final SaveResult result = saveLayer(params);
         final int layerId = (int)result.layerId;
@@ -157,34 +158,25 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
             JSONHelper.putValue(layerJSON, "warn", "metadataReadFailure");
             LOG.debug("Metadata read failure");
         }
-        // Also add groupId
-
-        List<OskariLayerGroupLink> groupLinks = layerGroupLinkService.findByLayerId(layerId);
-        JSONArray groups = new JSONArray();
-        for (OskariLayerGroupLink oskariLayerGroupLink:groupLinks) {
-            groups.put(oskariLayerGroupLink.getGroupId());
-        }
-        JSONHelper.putValue(layerJSON, "groups", groups);
         ResponseHelper.writeResponse(params, layerJSON);
     }
 
     private SaveResult saveLayer(final ActionParameters params) throws ActionException {
 
         // layer_id can be string -> external id!
-        final int layer_id = params.getHttpParam(PARAM_LAYER_ID, -1);
+        final String layer_id = params.getHttpParam(PARAM_LAYER_ID);
         SaveResult result = new SaveResult();
 
         try {
             // ************** UPDATE ************************
-            if (layer_id != -1) {
+            if (layer_id != null) {
 
                 final OskariLayer ml = mapLayerService.find(layer_id);
                 if (ml == null) {
                     // layer wasn't found
-                    throw new ActionParamsException(ERROR_NO_LAYER_WITH_ID + layer_id);
+                    throw new ActionException(ERROR_NO_LAYER_WITH_ID + layer_id);
                 }
-
-                if (!userHasEditPermission(params.getUser(), ml)) {
+                if (!permissionsService.hasEditPermissionForLayerByLayerId(params.getUser(), ml.getId())) {
                     throw new ActionDeniedException(ERROR_OPERATION_NOT_PERMITTED + layer_id);
                 }
 
@@ -192,22 +184,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
 
                 ml.setUpdated(new Date(System.currentTimeMillis()));
                 mapLayerService.update(ml);
-
-                AuditLog.user(params.getClientIp(), params.getUser())
-                        .withParam("id", ml.getId())
-                        .withParam("uiName", ml.getName(PropertyUtil.getDefaultLanguage()))
-                        .withParam("url", ml.getUrl())
-                        .withParam("name", ml.getName())
-                        .updated(AuditLog.ResourceType.MAPLAYER);
-
-                String maplayerGroups = params.getHttpParam(PARAM_MAPLAYER_GROUPS);
-                if (maplayerGroups != null) {
-                    int[] groupIds = getMaplayerGroupIds(maplayerGroups);
-                    List<OskariLayerGroupLink> links = getMaplayerGroupLinks(ml.getId(), groupIds);
-                    layerGroupLinkService.deleteLinksByLayerId(ml.getId());
-                    layerGroupLinkService.insertAll(links);
-                }
-
                 //TODO: WFS spesific property update
                 if (OskariLayer.TYPE_WFS.equals(ml.getType())) {
                     final WFSLayerConfiguration wfsl = wfsLayerService.findConfiguration(ml.getId());
@@ -239,7 +215,7 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
             // ************** INSERT ************************
             else {
 
-                if (!userHasAddPermission(params.getUser())) {
+                if (!permissionsService.hasAddLayerPermission(params.getUser())) {
                     throw new ActionDeniedException(ERROR_OPERATION_NOT_PERMITTED + layer_id);
                 }
 
@@ -252,20 +228,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
 
                 int id = mapLayerService.insert(ml);
                 ml.setId(id);
-
-                AuditLog.user(params.getClientIp(), params.getUser())
-                        .withParam("id", ml.getId())
-                        .withParam("uiName", ml.getName(PropertyUtil.getDefaultLanguage()))
-                        .withParam("url", ml.getUrl())
-                        .withParam("name", ml.getName())
-                        .added(AuditLog.ResourceType.MAPLAYER);
-
-                String maplayerGroups = params.getHttpParam(PARAM_MAPLAYER_GROUPS);
-                if (maplayerGroups != null && !maplayerGroups.isEmpty()) {
-                    int[] groupIds = getMaplayerGroupIds(maplayerGroups);
-                    List<OskariLayerGroupLink> links = getMaplayerGroupLinks(ml.getId(), groupIds);
-                    layerGroupLinkService.insertAll(links);
-                }
 
                 if(ml.isCollection()) {
                     // update the name with the id for permission mapping
@@ -312,36 +274,20 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         }
     }
 
-    private static int[] getMaplayerGroupIds(String maplayerGroups) {
-        return Arrays.stream(maplayerGroups.split(","))
-                .mapToInt(gid -> ConversionHelper.getInt(gid, -1))
-                .filter(gid -> gid >= 0)
-                .toArray();
-    }
-
-    private List<OskariLayerGroupLink> getMaplayerGroupLinks(final int layerId, final int[] groupIds) {
-        if (groupIds.length == 0) {
-            return Collections.emptyList();
-        }
-        return Arrays.stream(groupIds)
-                .mapToObj(groupId -> new OskariLayerGroupLink(layerId, groupId))
-                .collect(Collectors.toList());
-    }
-
     /**
      * Treats the param as comma-separated list. Splits to individual values and
      * returns a set of values that could be converted to Long
      * @param param
      * @return
      */
-    private Set<Integer> getPermissionSet(final String param) {
+    private Set<Long> getPermissionSet(final String param) {
         if(param == null) {
             return Collections.emptySet();
         }
-        final Set<Integer> set = new HashSet<>();
+        final Set<Long> set = new HashSet<Long>();
         final String[] roleIds = param.split(",");
         for (String externalId : roleIds) {
-            final int extId = ConversionHelper.getInt(externalId, -1);
+            final long extId = ConversionHelper.getLong(externalId, -1);
             if (extId != -1) {
                 set.add(extId);
             }
@@ -376,6 +322,13 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
                 String title = params.getHttpParam(paramName);
                 ml.setTitle(lang, title);
             }
+        }
+
+        String groupId = params.getHttpParam(PARAM_MAPLAYER_GROUPS, "-1");
+        ml.emptyMaplayerGroups();
+        for (String id: groupId.split(",")) {
+            MaplayerGroup maplayerGroup = oskariMapLayerGroupService.find(ConversionHelper.getInt(id, -1));
+            ml.addGroup(maplayerGroup);
         }
 
         ml.setVersion(params.getHttpParam(PARAM_VERSION, ""));
@@ -429,18 +382,13 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         ml.setCapabilitiesUpdateRateSec(params.getHttpParam(PARAM_CAPABILITIES_UPDATE_RATE_SEC, 0));
 
         String attributes = params.getHttpParam(PARAM_ATTRIBUTES);
-        if (attributes != null && !attributes.isEmpty()) {
+        if (attributes != null && !attributes.equals("")) {
             ml.setAttributes(JSONHelper.createJSONObject(attributes));
         }
 
         String parameters = params.getHttpParam(PARAM_PARAMS);
-        if (parameters != null && !parameters.isEmpty()) {
+        if (parameters != null && !parameters.equals("")) {
             ml.setParams(JSONHelper.createJSONObject(parameters));
-        }
-
-        String options = params.getHttpParam(PARAM_OPTIONS);
-        if (options != null && !options.isEmpty()) {
-            ml.setOptions(JSONHelper.createJSONObject(options));
         }
 
         ml.setSrs_name(params.getHttpParam(PARAM_SRS_NAME, ml.getSrs_name()));
@@ -602,10 +550,9 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         ml.setGfiType(params.getHttpParam(PARAM_GFI_TYPE, ml.getGfiType()));
 
         try {
-            String data = CapabilitiesCacheService.getFromService(ml);
-            WebMapService wms = OskariLayerCapabilitiesHelper.parseWMSCapabilities(data, ml);
+            OskariLayerCapabilities raw = capabilitiesService.getCapabilities(ml, true);
+            WebMapService wms = OskariLayerCapabilitiesHelper.parseWMSCapabilities(raw.getData(), ml);
             OskariLayerCapabilitiesHelper.setPropertiesFromCapabilitiesWMS(wms, ml, systemCRSs);
-            capabilitiesService.save(ml, data);
             return true;
         } catch (ServiceException | WebMapServiceParseException | LayerNotFoundInCapabilitiesException ex) {
             LOG.error(ex, "Failed to set capabilities for layer", ml);
@@ -616,10 +563,9 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
     private boolean handleWMTSSpecific(final ActionParameters params, OskariLayer ml, Set<String> systemCRSs) {
         try {
             String currentCrs = params.getHttpParam(PARAM_SRS_NAME, ml.getSrs_name());
-            String data = CapabilitiesCacheService.getFromService(ml);
-            WMTSCapabilities caps = WMTSCapabilitiesParser.parseCapabilities(data);
+            OskariLayerCapabilities raw = capabilitiesService.getCapabilities(ml, true);
+            WMTSCapabilities caps = WMTSCapabilitiesParser.parseCapabilities(raw.getData());
             OskariLayerCapabilitiesHelper.setPropertiesFromCapabilitiesWMTS(caps, ml, currentCrs, systemCRSs);
-            capabilitiesService.save(ml, data);
             return true;
         } catch (Exception ex) {
             LOG.error(ex, "Failed to set capabilities for layer", ml);
@@ -646,22 +592,10 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
             JSONHelper.putValue(attributes, PARAM_RESOLVE_DEPTH, true);
             ml.setAttributes(attributes);
         }
-
         // Get supported projections
-
-        Set<String> crss = new HashSet<>();
-        if (WFS3_0_0_VERSION.equals(ml.getVersion())) {
-            try {
-                WFS3Service service = WFS3Service.fromURL(ml.getUrl(), ml.getUsername(), ml.getPassword());
-                crss = service.getSupportedEpsgCodes(ml.getName());
-            } catch (Exception e) {
-                LOG.warn("Couldn't get supported projections for WFS3 layer:", ml.getName(), e.getMessage());
-            }
-        } else {
-            Map<String, Object> capa = GetGtWFSCapabilities.getGtDataStoreCapabilities(
-                    ml.getUrl(), ml.getVersion(), ml.getUsername(), ml.getPassword(), ml.getSrs_name());
-            crss = GetGtWFSCapabilities.parseProjections(capa, ml.getName());
-        }
+        Map<String, Object> capa = GetGtWFSCapabilities.getGtDataStoreCapabilities(
+                ml.getUrl(), ml.getVersion(), ml.getUsername(), ml.getPassword(), ml.getSrs_name());
+        Set<String> crss = GetGtWFSCapabilities.parseProjections(capa, ml.getName());
         JSONObject capabilities = new JSONObject();
         JSONHelper.put(capabilities, "srs", new JSONArray(crss));
         ml.setCapabilities(capabilities);
@@ -679,52 +613,79 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         return url;
     }
 
-    private void addPermissionsForRoles(final OskariLayer ml,
-                                        final Set<Integer> externalIds,
-                                        final Set<Integer> publishRoleIds,
-                                        final Set<Integer> downloadRoleIds,
-                                        final Set<Integer> viewEmbeddedRoleIds) {
-        Resource res = new Resource();
-        res.setType(ResourceType.maplayer);
-        res.setMapping(Integer.toString(ml.getId()));
+    private void addPermissionsForRoles(final OskariLayer ml, final User user, final String[] externalIds) {
+
+        OskariLayerResource res = new OskariLayerResource(ml);
         // insert permissions
-        LOG.debug("Adding permission", PermissionType.VIEW_LAYER, "for roles:", externalIds);
-        for (int externalId : externalIds) {
+        for (String externalId : externalIds) {
+            final long extId = ConversionHelper.getLong(externalId, -1);
+            if (extId != -1 && user.hasRoleWithId(extId)) {
+                Permission permission = new Permission();
+                permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+                permission.setExternalId(externalId);
+                permission.setType(Permissions.PERMISSION_TYPE_VIEW_LAYER);
+                res.addPermission(permission);
+
+                permission = new Permission();
+                permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+                permission.setExternalId(externalId);
+                permission.setType(Permissions.PERMISSION_TYPE_EDIT_LAYER);
+                res.addPermission(permission);
+            }
+        }
+        permissionsService.saveResourcePermissions(res);
+    }
+
+    private void addPermissionsForRoles(final OskariLayer ml,
+                                        final Set<Long> externalIds,
+                                        final Set<Long> publishRoleIds,
+                                        final Set<Long> downloadRoleIds,
+                                        final Set<Long> viewEmbeddedRoleIds) {
+
+        OskariLayerResource res = new OskariLayerResource(ml);
+        // insert permissions
+        LOG.debug("Adding permission", Permissions.PERMISSION_TYPE_VIEW_LAYER, "for roles:", externalIds);
+        for (long externalId : externalIds) {
             Permission permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.VIEW_LAYER);
+            permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+            permission.setExternalId(Long.toString(externalId));
+            permission.setType(Permissions.PERMISSION_TYPE_VIEW_LAYER);
             res.addPermission(permission);
 
             permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.EDIT_LAYER);
+            permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+            permission.setExternalId(Long.toString(externalId));
+            permission.setType(Permissions.PERMISSION_TYPE_EDIT_LAYER);
             res.addPermission(permission);
         }
 
-        LOG.debug("Adding permission", PermissionType.PUBLISH, "for roles:", publishRoleIds);
-        for (int externalId : publishRoleIds) {
+        LOG.debug("Adding permission", Permissions.PERMISSION_TYPE_PUBLISH, "for roles:", publishRoleIds);
+        for (long externalId : publishRoleIds) {
             Permission permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.PUBLISH);
+            permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+            permission.setExternalId(Long.toString(externalId));
+            permission.setType(Permissions.PERMISSION_TYPE_PUBLISH);
             res.addPermission(permission);
         }
 
-        LOG.debug("Adding permission", PermissionType.DOWNLOAD, "for roles:", downloadRoleIds);
-        for (int externalId : downloadRoleIds) {
+        LOG.debug("Adding permission", Permissions.PERMISSION_TYPE_DOWNLOAD, "for roles:", downloadRoleIds);
+        for (long externalId : downloadRoleIds) {
             Permission permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.DOWNLOAD);
+            permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+            permission.setExternalId(Long.toString(externalId));
+            permission.setType(Permissions.PERMISSION_TYPE_DOWNLOAD);
             res.addPermission(permission);
         }
 
-        LOG.debug("Adding permission", PermissionType.VIEW_PUBLISHED, "for roles:", viewEmbeddedRoleIds);
-        for (int externalId : viewEmbeddedRoleIds) {
+        LOG.debug("Adding permission", Permissions.PERMISSION_TYPE_VIEW_PUBLISHED, "for roles:", viewEmbeddedRoleIds);
+        for (long externalId : viewEmbeddedRoleIds) {
             Permission permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.VIEW_PUBLISHED);
+            permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
+            permission.setExternalId(Long.toString(externalId));
+            permission.setType(Permissions.PERMISSION_TYPE_VIEW_PUBLISHED);
             res.addPermission(permission);
         }
 
-        getPermissionsService().saveResource(res);
+        permissionsService.saveResourcePermissions(res);
     }
 }

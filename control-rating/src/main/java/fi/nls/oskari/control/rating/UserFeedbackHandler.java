@@ -30,6 +30,11 @@ public class UserFeedbackHandler extends RestActionHandler {
     private final RatingService ratingService = new RatingServiceMybatisImpl();
 
     @Override
+    public void init() {
+
+    }
+
+    @Override
     public void handleGet(ActionParameters params) throws ActionException {
         JSONArray result = new JSONArray();
         try {
@@ -43,7 +48,8 @@ public class UserFeedbackHandler extends RestActionHandler {
             result.put(FeedbackJSONFormatter.getAverageJSON(resourceId, average));
             result.put(getRatingsJSON(resource, resourceId));
         } catch (Exception e) {
-            throw new ActionException("Failed to get feedback", e);
+            e.printStackTrace();
+            throw new ActionException("Failed to get feedback");
         }
         ResponseHelper.writeResponse(params, result);
     }
@@ -64,11 +70,12 @@ public class UserFeedbackHandler extends RestActionHandler {
             );
             ResponseHelper.writeResponse(params, averageJSON);
         } catch (Exception e) {
-            throw new ActionException("Failed to save feedback", e);
+            e.printStackTrace();
+            throw new ActionException("Failed to save feedback");
         }
     }
 
-    private Rating saveFeedBackToServer(ActionParameters params) throws ActionException {
+    private Rating saveFeedBackToServer(ActionParameters params){
         try{
             JSONObject requestParameters = getRequestParameters(params.getHttpParam("data"));
             Rating feedback = createRatingFromRequest(requestParameters, params.getUser());
@@ -76,8 +83,10 @@ public class UserFeedbackHandler extends RestActionHandler {
                 throw new ActionException("Failed to save feedback, category information missing");
             return ratingService.saveRating(feedback);
         } catch (Exception e){
-            throw new ActionException("Error saving", e);
+            log.error(e.getMessage());
+            log.error(e.toString());
         }
+        return new Rating();
     }
 
     private JSONArray getRatingsJSON(String resource, String resourceId) throws JSONException {
@@ -111,7 +120,9 @@ public class UserFeedbackHandler extends RestActionHandler {
             JSONObject jsonData = (JSONObject) parser.parse(data);
             return jsonData;
         } catch (Exception e) {
-            throw new ActionException("Couldn't parse rating form's JSON", e);
+            e.printStackTrace();
+            log.debug(e.toString());
+            throw new ActionException("Couldn't parse rating form's JSON");
         }
     }
 
@@ -128,8 +139,10 @@ public class UserFeedbackHandler extends RestActionHandler {
             log.debug(jsonData.get("categoryItem"));
             log.debug(jsonData.get("category"));
             log.debug(jsonData.get("username"));
-        } catch (Exception e) {
-            throw new ActionException("Couldn't parse rating form's JSON", e);
+        }catch(Exception e){
+            e.printStackTrace();
+            log.debug(e.toString());
+            throw new ActionException("Couldn't parse rating form's JSON");
         }
         return null;
     }

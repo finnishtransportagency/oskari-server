@@ -14,6 +14,7 @@
         "wmslayer-openstreetmap-demo-landsat.json"
     ],
     "bundles" : [
+        { "id" : "openlayers-default-theme" },
         {
             "id" : "mapfull",
             "config" : {
@@ -47,6 +48,7 @@
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.Portti2Zoombar" },
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.PanButtons" },
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.FullScreenPlugin" },
+                    { "id" : "Oskari.mapframework.bundle.mapstats.plugin.StatsLayerPlugin" },
                     { "id" : "Oskari.mapframework.bundle.myplacesimport.plugin.UserLayersLayerPlugin" },
                     { "id" : "Oskari.mapframework.bundle.mapmyplaces.plugin.MyPlacesLayerPlugin" },
                     { "id" : "Oskari.mapframework.bundle.mapanalysis.plugin.AnalysisLayerPlugin" },
@@ -61,7 +63,6 @@
                 "zoom": 1
             }
         },
-        { "id" : "drawtools" },
         { "id" : "divmanazer" },
         {
             "id" : "toolbar",
@@ -85,10 +86,10 @@
 		},
         { "id" : "metadataflyout" },
         { "id" : "personaldata" },
-        { "id" : "publisher2" },
+        { "id" : "publisher" },
         { "id" : "maplegend" },
         { "id" : "userguide" },
-        { "id" : "myplaces3" },
+        { "id" : "myplaces2" },
         { "id" : "printout" },
         { "id" : "analyse" },
         { "id" : "myplacesimport" },

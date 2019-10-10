@@ -44,8 +44,6 @@ public class AnalysisHelper {
 
             ds.connectionParameters.user = info.user;
             ds.connectionParameters.passwd = info.pass;
-            ds.connectionParameters.host = info.getHost();
-            ds.connectionParameters.port = info.getPort();
             ds.connectionParameters.database = info.getDBName();
             // !! in 2.5.2 namespace = NS PREFIX, in 2.7.1 it needs to be the NS URI!!
             ds.connectionParameters.namespace = ns.uri;
@@ -62,7 +60,7 @@ public class AnalysisHelper {
             FeatureType featureData = new FeatureType();
             featureData.enabled = true;
             featureData.name = "analysis_data";
-            GeoserverPopulator.resolveCRS(featureData, srs);
+            featureData.srs = srs;
 
             geoserver.createFeatureType(featureData, GeoserverPopulator.NAMESPACE, storeName);
             LOG.info("Added featuretype:", featureData);
@@ -75,7 +73,7 @@ public class AnalysisHelper {
         try {
             featureStyledData.enabled = true;
             featureStyledData.name = "analysis_data_style";
-            GeoserverPopulator.resolveCRS(featureStyledData, srs);
+            featureStyledData.srs = srs;
 
             geoserver.createFeatureType(featureStyledData, GeoserverPopulator.NAMESPACE, storeName);
             LOG.info("Added featuretype:", featureStyledData);

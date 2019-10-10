@@ -3,12 +3,12 @@ package org.oskari.map.userlayer.service;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.domain.map.userlayer.UserLayer;
 import fi.nls.oskari.domain.map.userlayer.UserLayerData;
-import fi.nls.oskari.domain.map.UserDataStyle;
+import fi.nls.oskari.domain.map.userlayer.UserLayerStyle;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.geometry.WKTHelper;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
 import fi.nls.oskari.map.layer.formatters.LayerJSONFormatterUSERLAYER;
 import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.ServiceRuntimeException;
@@ -31,7 +31,6 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.TransformException;
 import org.oskari.geojson.GeoJSON;
 import org.oskari.geojson.GeoJSONWriter;
-import org.oskari.map.userlayer.input.KMLParser;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,7 +39,7 @@ import java.util.List;
 public class UserLayerDataService {
 
     private static final Logger log = LogFactory.getLogger(UserLayerDataService.class);
-    private static final OskariLayerService mapLayerService = new OskariLayerServiceMybatisImpl();
+    private static final OskariLayerService mapLayerService = new OskariLayerServiceIbatisImpl();
     private static final LayerJSONFormatterUSERLAYER FORMATTER = new LayerJSONFormatterUSERLAYER();
 
     private static final String USERLAYER_LAYER_PREFIX = "userlayer_";
@@ -48,7 +47,6 @@ public class UserLayerDataService {
 
     private static final String USERLAYER_MAXFEATURES_COUNT = "userlayer.maxfeatures.count";
     private static final int USERLAYER_MAX_FEATURES_COUNT = PropertyUtil.getOptional(USERLAYER_MAXFEATURES_COUNT, -1);
-    private static final String DEFAULT_LOCALES_LANGUAGE = "en";
 
     private static final int USERLAYER_BASE_LAYER_ID = PropertyUtil.getOptional(USERLAYER_BASELAYER_ID, -1);
 
@@ -88,23 +86,8 @@ public class UserLayerDataService {
             Collection<PropertyDescriptor> types = schema.getDescriptors();
             for (PropertyDescriptor type : types) {
                 JSONObject obj = new JSONObject();
-                String name = type.getName().getLocalPart();
-                obj.put("name", name);
+                obj.put("name", type.getName().getLocalPart());
                 obj.put("type", type.getType().getBinding().getSimpleName());
-                // don't add locale for geometry
-                if (!KMLParser.KML_GEOM.equals(name)){
-                    JSONObject locales = new JSONObject();
-                    // use name as default localized value
-                    String localizedName = name;
-                    // KML handling
-                    if (KMLParser.KML_NAME.equals(name)){
-                        localizedName =  "Name";
-                    } else if (KMLParser.KML_DESC.equals(name)){
-                        localizedName =  "Description";
-                    }
-                    locales.put(DEFAULT_LOCALES_LANGUAGE, localizedName);
-                    obj.put("locales", locales);
-                }
                 jsfields.put(obj);
             }
         } catch (Exception ex) {
@@ -113,22 +96,18 @@ public class UserLayerDataService {
         return JSONHelper.getStringFromJSON(jsfields, "[]");
     }
 
-    public static UserDataStyle createUserLayerStyle(JSONObject styleObject)
-            throws UserLayerException {
-        final UserDataStyle style = new UserDataStyle();
-        try{
-            style.setId(1);  // for default, even if style should be always valued
-            if (styleObject != null) {
-                style.populateFromOskariJSON(styleObject);
-            }
-            return style;
-        } catch (JSONException e) {
-            throw new UserLayerException("Invalid style json: " + styleObject);
+    public static UserLayerStyle createUserLayerStyle(JSONObject styleObject)
+            throws JSONException {
+        final UserLayerStyle style = new UserLayerStyle();
+        style.setId(1);  // for default, even if style should be always valued
+        if (styleObject != null) {
+            style.populateFromJSON(styleObject);
         }
+        return style;
     }
 
     public static List<UserLayerData> createUserLayerData(SimpleFeatureCollection fc, String uuid)
-            throws UserLayerException {
+            throws JSONException {
         List<UserLayerData> userLayerDataList = new ArrayList<>();
         try (SimpleFeatureIterator it = fc.features()) {
             while (it.hasNext()) {
@@ -145,24 +124,20 @@ public class UserLayerDataService {
         return userLayerDataList;
     }
 
-    private static UserLayerData toUserLayerData(SimpleFeature f, String uuid) throws UserLayerException {
-        try {
-            JSONObject geoJSON = new GeoJSONWriter().writeFeature(f);
-            String id = geoJSON.optString(GeoJSON.ID);
-            JSONObject geometry = geoJSON.getJSONObject(GeoJSON.GEOMETRY);
-            String geometryJson = geometry.toString();
-            JSONObject properties = geoJSON.optJSONObject(GeoJSON.PROPERTIES);
-            String propertiesJson = properties != null ? properties.toString() : null;
+    private static UserLayerData toUserLayerData(SimpleFeature f, String uuid) throws JSONException {
+        JSONObject geoJSON = new GeoJSONWriter().writeFeature(f);
+        String id = geoJSON.optString(GeoJSON.ID);
+        JSONObject geometry = geoJSON.getJSONObject(GeoJSON.GEOMETRY);
+        String geometryJson = geometry.toString();
+        JSONObject properties = geoJSON.optJSONObject(GeoJSON.PROPERTIES);
+        String propertiesJson = properties != null ? properties.toString() : null;
 
-            UserLayerData userLayerData = new UserLayerData();
-            userLayerData.setUuid(uuid);
-            userLayerData.setFeature_id(id);
-            userLayerData.setGeometry(geometryJson);
-            userLayerData.setProperty_json(propertiesJson);
-            return userLayerData;
-        } catch (JSONException e) {
-            throw new UserLayerException("Failed to encode feature as GeoJSON", UserLayerException.ErrorType.INVALID_FEATURE); //no geometry
-        }
+        UserLayerData userLayerData = new UserLayerData();
+        userLayerData.setUuid(uuid);
+        userLayerData.setFeature_id(id);
+        userLayerData.setGeometry(geometryJson);
+        userLayerData.setProperty_json(propertiesJson);
+        return userLayerData;
     }
 
     /**
@@ -183,8 +158,8 @@ public class UserLayerDataService {
      * @param ulayer
      * @return
      */
-    public static JSONObject parseUserLayer2JSON(UserLayer ulayer, String mapSrs) {
-        return parseUserLayer2JSON(ulayer, getBaseLayer(), mapSrs);
+    public static JSONObject parseUserLayer2JSON(UserLayer ulayer) {
+        return parseUserLayer2JSON(ulayer, getBaseLayer());
     }
     /**
      * @param ulayer data in user_layer table
@@ -192,20 +167,22 @@ public class UserLayerDataService {
      * @return
      * @throws ServiceException
      */
-    public static JSONObject parseUserLayer2JSON(final UserLayer ulayer, final OskariLayer baseLayer, final String mapSrs) {
+    public static JSONObject parseUserLayer2JSON(final UserLayer ulayer, final OskariLayer baseLayer) {
 
         try {
+            final String id = baseLayer.getExternalId();
             final String name = baseLayer.getName();
             final String type = baseLayer.getType();
 
             // Merge userlayer values
+            baseLayer.setExternalId(USERLAYER_LAYER_PREFIX + ulayer.getId());
             baseLayer.setName(ulayer.getLayer_name());
             baseLayer.setType(OskariLayer.TYPE_USERLAYER);
             // create the JSON
-            final JSONObject json = FORMATTER.getJSON(baseLayer, PropertyUtil.getDefaultLanguage(), false, mapSrs, ulayer);
-            JSONHelper.putValue(json, "id", USERLAYER_LAYER_PREFIX + ulayer.getId());
+            final JSONObject json = FORMATTER.getJSON(baseLayer, PropertyUtil.getDefaultLanguage(), false, null, ulayer);
 
             // restore the previous values for baseLayer
+            baseLayer.setExternalId(id);
             baseLayer.setName(name);
             baseLayer.setType(type);
 

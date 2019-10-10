@@ -1,7 +1,5 @@
 package fi.nls.oskari.transport;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vividsolutions.jts.geom.Coordinate;
 import fi.nls.oskari.cache.JedisManager;
 import fi.nls.oskari.log.LogFactory;
@@ -20,11 +18,13 @@ import fi.nls.oskari.work.*;
 import fi.nls.oskari.work.hystrix.HystrixJobQueue;
 import fi.nls.oskari.worker.Job;
 import fi.nls.oskari.worker.JobQueue;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.cometd.bayeux.Message;
 import org.cometd.bayeux.server.BayeuxServer;
-import org.cometd.bayeux.server.ServerMessage;
 import org.cometd.bayeux.server.ServerSession;
 import org.cometd.server.AbstractService;
 import org.cometd.server.JacksonJSONContextServer;
+import org.cometd.server.JettyJSONContextServer;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -82,7 +82,6 @@ public class TransportService extends AbstractService {
 	public static final String PARAM_KEEP_PREVIOUS = "keepPrevious";
     public static final String PARAM_GEOM_REQUEST = "geomRequest";
 
-
     public static final String CHANNEL_INIT = "/service/wfs/init";
 	public static final String CHANNEL_ADD_MAP_LAYER = "/service/wfs/addMapLayer";
 	public static final String CHANNEL_REMOVE_MAP_LAYER = "/service/wfs/removeMapLayer";
@@ -99,7 +98,7 @@ public class TransportService extends AbstractService {
 	public static final String CHANNEL_DISCONNECT = "/meta/disconnect";
     private Map<String, MapLayerJobProvider> mapLayerJobProviders;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
 
     // action user uid API
     private static final String UID_API = "GetCurrentUser";
@@ -125,7 +124,10 @@ public class TransportService extends AbstractService {
         super(bayeux, "transport");
 
         Object jsonContext = bayeux.getOption("jsonContext");
-        if( jsonContext instanceof JacksonJSONContextServer) {
+        if( jsonContext instanceof JettyJSONContextServer) {
+
+        } else if( jsonContext instanceof JacksonJSONContextServer) {
+            // CometD uses older version of Jackson so transport uses 1.x versions for this on purpose
             ObjectMapper transportMapper =  ((JacksonJSONContextServer) jsonContext).getObjectMapper();
             transportMapper.registerModule(new GeometryJSONOutputModule());
         }
@@ -221,7 +223,7 @@ public class TransportService extends AbstractService {
      * @param client
      * @param message
      */
-    public void disconnect(ServerSession client, ServerMessage message)
+    public void disconnect(ServerSession client, Message message)
     {
         String json = SessionStore.getCache(client.getId());
         if(json != null) {
@@ -250,11 +252,12 @@ public class TransportService extends AbstractService {
      * @param client
      * @param message
      */
-    public void processRequest(ServerSession client, ServerMessage message)
+    public void processRequest(ServerSession client, Message message)
     {
         log.debug("Serving client:", client.getId());
-    	Map<String, Object> output = new HashMap<>();
+    	Map<String, Object> output = new HashMap<String, Object>();
     	Map<String, Object> params = message.getDataAsMap();
+    	String json = message.getJSON();
 
         if(params == null) {
             log.warn("Request failed because parameters were not set");
@@ -262,7 +265,7 @@ public class TransportService extends AbstractService {
             output.put("message", "Request failed because parameters were not set");
             output.put("key", WFSExceptionHelper.ERROR_PARAMETERS_NOT_SET);
             output.put("level", WFSExceptionHelper.ERROR_LEVEL);
-            client.deliver(local, ResultProcessor.CHANNEL_ERROR, output);
+            client.deliver(local, ResultProcessor.CHANNEL_ERROR, output, null);
             return;
         }
         String channel = message.getChannel();
@@ -270,9 +273,9 @@ public class TransportService extends AbstractService {
             // get session
             SessionStore store = getStore(client.getId());
             // channel processing
-            log.debug("Processing request on channel:", channel, "- payload:", params);
+            log.debug("Processing request on channel:", channel, "- payload:", json);
             if (channel.equals(CHANNEL_INIT)) {
-                processInit(client, store, params);
+                processInit(client, store, json);
             } else if (channel.equals(CHANNEL_ADD_MAP_LAYER)) {
                 addMapLayer(store, params);
             } else if (channel.equals(CHANNEL_REMOVE_MAP_LAYER)) {
@@ -288,11 +291,11 @@ public class TransportService extends AbstractService {
             } else if (channel.equals(CHANNEL_SET_MAP_LAYER_CUSTOM_STYLE)) {
                 setMapLayerCustomStyle(store, params);
             } else if (channel.equals(CHANNEL_SET_MAP_CLICK)) {
-                setMapClick(store, params);
+                setMapClick(store, json, params);
             } else if (channel.equals(CHANNEL_SET_FILTER)) {
-                setFilter(store, params);
+                setFilter(store, json, params);
             } else if (channel.equals(CHANNEL_SET_PROPERTY_FILTER)) {
-                setPropertyFilter(store, params);
+                setPropertyFilter(store, json, params);
             } else if (channel.equals(CHANNEL_SET_MAP_LAYER_VISIBILITY)) {
                 setMapLayerVisibility(store, params);
             }
@@ -310,7 +313,7 @@ public class TransportService extends AbstractService {
             if (e.getCause() != null) {
                 output.put("cause", e.getCause().getMessage());
             }
-            client.deliver(local, ResultProcessor.CHANNEL_ERROR, output);
+            client.deliver(local, ResultProcessor.CHANNEL_ERROR, output, null);
         }
     }
 
@@ -334,16 +337,10 @@ public class TransportService extends AbstractService {
      *
      * @param client
      * @param store
-     * @param params
+     * @param json
      */
-    public void processInit(ServerSession client, SessionStore store, Map<String, Object> params) {
-
+    public void processInit(ServerSession client, SessionStore store, String json) {
         try {
-            // This makes no sense, but dismantling setParamsJSON() is much more work
-            // This is just to get transport to work with CometD 4.x
-            Map<String, Object> wrapper = new HashMap<>();
-            wrapper.put("data", params);
-            String json = getAsString(wrapper);
             store = SessionStore.setParamsJSON(json);
 
             store.setClient(client.getId());
@@ -621,13 +618,6 @@ public class TransportService extends AbstractService {
         customStyle.save();
     }
 
-    private String getAsString(Map map) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(map);
-        } catch (JsonProcessingException e) {
-            throw new ServiceRuntimeException("Error in JSON handling");
-        }
-    }
     /**
      * Click isn't saved in session. Set click will be request just once.
      *
@@ -636,16 +626,10 @@ public class TransportService extends AbstractService {
      * @param store
      * @param params
      */
-    private void setMapClick(SessionStore store, Map<String, Object> params) {
+    private void setMapClick(SessionStore store, String json, Map<String, Object> params) {
         // functionality change - geojson instead of point coordinate
-        Map filterJSON = (Map)params.get("filter");
-        if (filterJSON == null) {
-            throw new ServiceRuntimeException("Failed to set a map click - Reading JSON data failed",
-                    WFSExceptionHelper.ERROR_SET_PROCESS_REQUEST_FAILED, WFSExceptionHelper.WARNING_LEVEL);
-        }
-        String geojson = getAsString((Map) filterJSON.get("geojson"));
-        GeoJSONFilter filter = GeoJSONFilter.setParamsJSON(geojson);
-        if (filter == null) {
+        GeoJSONFilter filter = GeoJSONFilter.setParamsJSON(json);
+        if (filter == null){
             throw new ServiceRuntimeException("Failed to set a map click - Reading JSON data failed",
                     WFSExceptionHelper.ERROR_SET_PROCESS_REQUEST_FAILED, WFSExceptionHelper.WARNING_LEVEL);
         }
@@ -710,16 +694,10 @@ public class TransportService extends AbstractService {
      * Sends only feature json.
      *
      * @param store
+     * @param json
      */
-    private void setFilter(SessionStore store, Map<String, Object> params) {
-
-        Map filterJSON = (Map)params.get("filter");
-        if (filterJSON == null) {
-            throw new ServiceRuntimeException("Failed to set GeoJson filter - Reading JSON data failed",
-                    WFSExceptionHelper.ERROR_SET_PROCESS_REQUEST_FAILED, WFSExceptionHelper.WARNING_LEVEL);
-        }
-        String geojson = getAsString((Map) filterJSON.get("geojson"));
-        GeoJSONFilter filter = GeoJSONFilter.setParamsJSON(geojson);
+    private void setFilter(SessionStore store, String json, Map<String, Object> params) {
+        GeoJSONFilter filter = GeoJSONFilter.setParamsJSON(json);
         if (filter == null){
             throw new ServiceRuntimeException("Failed to set GeoJson filter - Reading JSON data failed",
                     WFSExceptionHelper.ERROR_SET_PROCESS_REQUEST_FAILED, WFSExceptionHelper.WARNING_LEVEL);
@@ -747,10 +725,9 @@ public class TransportService extends AbstractService {
      * Sends only feature json.
      *
      * @param store
-     * @param params
+     * @param json
      */
-    private void setPropertyFilter(SessionStore store, Map<String, Object> params) {
-        String json = getAsString((Map) params.get("filter"));
+    private void setPropertyFilter(SessionStore store, String json, Map<String, Object> params) {
         PropertyFilter propertyFilter = PropertyFilter.setParamsJSON(json);
         if (propertyFilter == null){
             throw new ServiceRuntimeException("Failed to set property filter - Reading JSON data failed",
@@ -760,18 +737,17 @@ public class TransportService extends AbstractService {
         // stores property filters, but doesn't save
         store.setPropertyFilter(propertyFilter);
 
+        Job job = null;
         for (Entry<String, Layer> e : store.getLayers().entrySet()) {
-            if (!e.getValue().isVisible()) {
-                continue;
-            }
-            // job without image drawing
-            // only for requested layer
-            if (!e.getValue().getId().equals(propertyFilter.getLayerId())) {
-                continue;
-            }
-            Job job = createOWSMapLayerJob(createResultProcessor(parseRequestId(params)), JobType.PROPERTY_FILTER, store, e.getValue().getId(), false, true, false, false);
-            if(job != null){
-                jobs.add(job);
+            if (e.getValue().isVisible()) {
+                // job without image drawing
+                // only for requested layer
+                if (e.getValue().getId().equals(propertyFilter.getLayerId())) {
+                    job = createOWSMapLayerJob(createResultProcessor(parseRequestId(params)), JobType.PROPERTY_FILTER, store, e.getValue().getId(), false, true, false, false);
+                    if(job != null){
+                        jobs.add(job);
+                    }
+                }
             }
         }
     }

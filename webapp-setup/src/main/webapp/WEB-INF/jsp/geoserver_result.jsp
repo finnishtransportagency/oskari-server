@@ -14,9 +14,6 @@
     <c:forEach var="prop" items="${properties}">
         <li>${prop.key} = ${prop.value}</li>
     </c:forEach>
-    <c:if test="${empty properties}">
-        <li>No updates required</li>
-    </c:if>
     </ul>
 </div>
 </body>

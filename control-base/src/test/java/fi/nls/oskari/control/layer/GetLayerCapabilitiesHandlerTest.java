@@ -1,12 +1,17 @@
 package fi.nls.oskari.control.layer;
 
+import fi.mml.portti.domain.permissions.Permissions;
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.control.ActionConstants;
 import fi.nls.oskari.control.ActionDeniedException;
 import fi.nls.oskari.control.ActionException;
 import fi.nls.oskari.control.ActionParameters;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.permission.domain.Permission;
+import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.service.capabilities.CapabilitiesCacheService;
 import fi.nls.oskari.util.PropertyUtil;
@@ -16,9 +21,6 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.PermissionServiceMybatisImpl;
-import org.oskari.permissions.model.*;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.HashMap;
@@ -43,7 +45,7 @@ public class GetLayerCapabilitiesHandlerTest extends JSONActionRouteTest {
     public void setup() {
         assumeTrue(TestHelper.dbAvailable());
         OskariLayerService layerService = getOskariLayerService();
-        PermissionService permissionsService = getPermissionsService();
+        PermissionsService permissionsService = getPermissionsService();
         // replace the cache service with a test service
         OskariComponentManager.removeComponentsOfType(CapabilitiesCacheService.class);
         OskariComponentManager.addComponent(new CapabilitiesCacheServiceMock(TEST_DATA));
@@ -94,27 +96,27 @@ public class GetLayerCapabilitiesHandlerTest extends JSONActionRouteTest {
      */
     private OskariLayerService getOskariLayerService() {
 
-        OskariLayerService layerService = mock(OskariLayerServiceMybatisImpl.class);
+        OskariLayerService layerService = mock(OskariLayerServiceIbatisImpl.class);
 
         OskariLayer layer = new OskariLayer();
         layer.setType("WMTS");
-        doReturn(layer).when(layerService).find(1);
+        doReturn(layer).when(layerService).find("1");
         OskariLayer errorLayer = new OskariLayer();
         errorLayer.setType("ERROR");
-        doReturn(errorLayer).when(layerService).find(2);
+        doReturn(errorLayer).when(layerService).find("2");
         return layerService;
     }
-    private PermissionService getPermissionsService() {
+    private PermissionsService getPermissionsService() {
 
-        PermissionService service = mock(PermissionServiceMybatisImpl.class);
+        PermissionsService service = mock(PermissionsServiceIbatisImpl.class);
 
         Resource res = new Resource();
         Permission p = new Permission();
-        p.setType(PermissionType.VIEW_LAYER);
-        p.setExternalType(PermissionExternalType.ROLE);
+        p.setType(Permissions.PERMISSION_TYPE_VIEW_LAYER);
+        p.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
         p.setExternalId("" + getLoggedInUser().getRoles().iterator().next().getId());
         res.addPermission(p);
-        doReturn(res).when(service).findResource(ResourceType.maplayer, any(String.class));
+        doReturn(res).when(service).findResource(any(Resource.class));
         return service;
     }
 

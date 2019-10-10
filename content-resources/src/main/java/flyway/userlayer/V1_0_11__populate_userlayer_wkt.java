@@ -5,7 +5,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import fi.nls.oskari.db.DBHandler;
 import org.flywaydb.core.api.migration.jdbc.JdbcMigration;
 
 import fi.nls.oskari.log.LogFactory;
@@ -18,7 +17,7 @@ public class V1_0_11__populate_userlayer_wkt implements JdbcMigration {
     private static final int WGS84_SRID = 4326;
 
     public void migrate(Connection connection) throws Exception {
-        String srsName = getSrsName(DBHandler.getConnection());
+        String srsName = getSrsName(connection);
         if (srsName == null){
             LOG.error("Cannot get srs name for userlayer data");
             throw new IllegalArgumentException("Cannot get srs name for userlayer data");

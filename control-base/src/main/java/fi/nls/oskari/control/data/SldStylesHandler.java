@@ -4,7 +4,6 @@ import fi.nls.oskari.annotation.OskariActionRoute;
 import fi.nls.oskari.control.ActionException;
 import fi.nls.oskari.control.ActionHandler;
 import fi.nls.oskari.control.ActionParameters;
-import fi.nls.oskari.control.RestActionHandler;
 import fi.nls.oskari.service.ServiceException;
 
 import fi.nls.oskari.service.styles.SldStyle;
@@ -25,11 +24,16 @@ import java.util.List;
  * Returns available sld styles for wfs layers
  */
 @OskariActionRoute("SldStyles")
-public class SldStylesHandler extends RestActionHandler {
+public class SldStylesHandler extends ActionHandler {
 
     private final SldStylesService service = new SldStylesServiceMybatisImpl();
     private static final String PARAM_SLD_NAME = "name";
     private static final String PARAM_SLD_XML = "xml";
+
+    public void init() {
+
+    }
+
 
     /**
      * Action handler
@@ -38,7 +42,7 @@ public class SldStylesHandler extends RestActionHandler {
      * @throws ActionException
      */
     @Override
-    public void handlePost(final ActionParameters params)
+    public void handleAction(final ActionParameters params)
             throws ActionException {
         final String name = params.getHttpParam(PARAM_SLD_NAME);
         if(name != null){

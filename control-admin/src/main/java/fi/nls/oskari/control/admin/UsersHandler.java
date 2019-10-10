@@ -10,7 +10,6 @@ import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.UserService;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -65,8 +64,10 @@ public class UsersHandler extends RestActionHandler {
                     arr.put(user2Json(user));
                 }
             }
-        } catch (ServiceException | JSONException se) {
+        } catch (ServiceException se) {
             throw new ActionException(se.getMessage(), se);
+        } catch (JSONException je) {
+            throw new ActionException(je.getMessage(), je);
         }
         log.info(response);
         ResponseHelper.writeResponse(params, response);
@@ -80,10 +81,6 @@ public class UsersHandler extends RestActionHandler {
         String[] roles = params.getRequest().getParameterValues("roles");
         String password = params.getHttpParam(PARAM_PASSWORD);
         User retUser = null;
-
-        AuditLog audit = AuditLog.user(params.getClientIp(), params.getUser())
-                .withParam("email", user.getEmail());
-
         try {
             if (user.getId() > -1) {
                 //retUser = userService.modifyUser(user);
@@ -93,7 +90,6 @@ public class UsersHandler extends RestActionHandler {
                 if (password != null && !"".equals(password.trim())) {
                     userService.updateUserPassword(retUser.getScreenname(), password);
                 }
-                audit.updated(AuditLog.ResourceType.USER);
             } else {
             	log.debug("NOW IN POST and creating a new user!!!!!!!!!!!!!");
                 if (password == null || password.trim().isEmpty()) {
@@ -101,7 +97,6 @@ public class UsersHandler extends RestActionHandler {
                 }
                 retUser = userService.createUser(user);
                 userService.setUserPassword(retUser.getScreenname(), password);
-                audit.added(AuditLog.ResourceType.USER);
             }
 
         } catch (ServiceException se) {
@@ -130,9 +125,6 @@ public class UsersHandler extends RestActionHandler {
         } catch (ServiceException se) {
             throw new ActionException(se.getMessage(), se);
         }
-        AuditLog.user(params.getClientIp(), params.getUser())
-                .withParam("email", user.getEmail())
-                .added(AuditLog.ResourceType.USER);
         JSONObject response = null;
         try {
             response = user2Json(retUser);
@@ -149,9 +141,6 @@ public class UsersHandler extends RestActionHandler {
         if (id > -1) {
             try {
                 userService.deleteUser(id);
-                AuditLog.user(params.getClientIp(), params.getUser())
-                        .withParam("id", id)
-                        .deleted(AuditLog.ResourceType.USER);
             } catch (ServiceException se) {
                 throw new ActionException(se.getMessage(), se);
             }
@@ -169,7 +158,12 @@ public class UsersHandler extends RestActionHandler {
 
     private long getId(ActionParameters params) throws NumberFormatException {
         // see if params contains an ID
-        return params.getHttpParam(PARAM_ID, -1);
+        long id = -1l;
+        String idString = params.getHttpParam(PARAM_ID, "-1");
+        if (idString != null && idString.length() > 0) {
+            id = Long.parseLong(idString);
+        }
+        return id;
     }
 
     private void getUserParams(User user, ActionParameters params) throws ActionParamsException {

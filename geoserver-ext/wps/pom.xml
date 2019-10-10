@@ -11,6 +11,7 @@
 
     <name>Geoserver extension aggregate POM</name>
     <description>Shortcut to compile extensions</description>
+
     <modules>
         <module>IntersectionFeatureCollection2</module>
         <module>oskari_point_stacker</module>

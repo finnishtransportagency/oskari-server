@@ -1,5 +1,8 @@
 package fi.nls.oskari.control.admin;
 
+import fi.mml.portti.domain.permissions.Permissions;
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.annotation.OskariActionRoute;
 import fi.nls.oskari.control.*;
 import fi.nls.oskari.domain.Role;
@@ -7,24 +10,23 @@ import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.domain.map.view.Bundle;
 import fi.nls.oskari.domain.map.view.View;
+import fi.nls.oskari.log.LogFactory;
+import fi.nls.oskari.log.Logger;
+import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.layer.OskariLayerService;
+import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
 import fi.nls.oskari.map.view.ViewException;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.service.OskariComponentManager;
+import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.UserService;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
-import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import fi.nls.oskari.view.modifier.ViewModifier;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.model.PermissionType;
-import org.oskari.permissions.model.ResourceType;
-import org.oskari.service.util.ServiceFactory;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -35,18 +37,20 @@ import static fi.nls.oskari.control.ActionConstants.*;
 @OskariActionRoute("SystemViews")
 public class SystemViewsHandler extends RestActionHandler {
 
+    private Logger log = LogFactory.getLogger(SystemViewsHandler.class);
     private ViewService viewService;
     private OskariLayerService layerService;
-    private PermissionService permissionsService;
+    private PermissionsService permissionsService;
 
     private static final String ERROR_CODE_GUEST_NOT_AVAILABLE = "guest_not_available";
-    private final static String DEFAULT_SRS = PropertyUtil.get("oskari.native.srs", "EPSG:4326");
+    // is the default in frontend code
+    private final static String DEFAULT_SRS = "EPSG:3067";
 
     public void init() {
-        viewService = ServiceFactory.getViewService();
+        viewService = new ViewServiceIbatisImpl();
 
-        layerService = ServiceFactory.getMapLayerService();
-        permissionsService = OskariComponentManager.getComponentOfType(PermissionService.class);
+        layerService = new OskariLayerServiceIbatisImpl();
+        permissionsService = new PermissionsServiceIbatisImpl();
     }
 
     /**
@@ -132,9 +136,12 @@ public class SystemViewsHandler extends RestActionHandler {
                 layerIdList.add(layer.optString(PARAM_ID));
             }
 
-            final List<String> notAvailableForGuest = getLayersNotAvailableForGuest(layerIdList);
+            final List<OskariLayer> notAvailableForGuest = getLayersNotAvailableForGuest(layerIdList);
             if(!notAvailableForGuest.isEmpty()) {
-                final JSONArray list = new JSONArray(notAvailableForGuest);
+                final JSONArray list = new JSONArray();
+                for (OskariLayer layer :notAvailableForGuest) {
+                    list.put(layer.getId());
+                }
                 // TODO: Respond with error and end execution
                 JSONObject info = JSONHelper.createJSONObject("selectedLayers", list);
                 JSONHelper.putValue(info, "code", ERROR_CODE_GUEST_NOT_AVAILABLE);
@@ -145,10 +152,6 @@ public class SystemViewsHandler extends RestActionHandler {
 
         try {
             viewService.updateBundleSettingsForView(view.getId(), mapfull);
-
-            AuditLog.user(params.getClientIp(), params.getUser())
-                    .withParam("id", view.getId())
-                    .updated(AuditLog.ResourceType.SYSTEM_VIEW);
         } catch (ViewException ex) {
             throw new ActionException("Error updating view settings", ex);
         }
@@ -182,25 +185,16 @@ public class SystemViewsHandler extends RestActionHandler {
         JSONHelper.putValue(state, ViewModifier.KEY_ZOOM, params.getRequiredParamInt(ViewModifier.KEY_ZOOM));
     }
 
-    private List<String> getLayersNotAvailableForGuest(final List<String> layerIdList) throws ActionException {
-        final List<String> notAvailable = new ArrayList<>();
-        List<Integer> idList = new ArrayList<>();
-        for (String layerId : layerIdList) {
-            int id = ConversionHelper.getInt(layerId, -1);
-            if (id == -1) {
-                notAvailable.add(layerId);
-            } else {
-                idList.add(id);
-            }
-        }
-        final List<OskariLayer> layers = layerService.findByIdList(idList);
+    private List<OskariLayer> getLayersNotAvailableForGuest(final List<String> layerIdList) throws ActionException {
+        final List<OskariLayer> layers = layerService.find(layerIdList);
+        final List<OskariLayer> notAvailable = new ArrayList<OskariLayer>();
         try {
             User guest = UserService.getInstance().getGuestUser();
             for(OskariLayer layer : layers) {
-                boolean notAvailableForGuestUsers = permissionsService.findResource(ResourceType.maplayer, Integer.toString(layer.getId()))
-                        .filter(r -> !r.hasPermission(guest, PermissionType.VIEW_LAYER)).isPresent();
-                if(notAvailableForGuestUsers) {
-                    notAvailable.add(Integer.toString(layer.getId()));
+                final Resource resource = permissionsService.findResource(new OskariLayerResource(layer));
+                final boolean hasPermssion = resource.hasPermission(guest, Permissions.PERMISSION_TYPE_VIEW_LAYER);
+                if(!hasPermssion) {
+                    notAvailable.add(layer);
                 }
             }
         } catch (ServiceException ex) {
@@ -212,6 +206,9 @@ public class SystemViewsHandler extends RestActionHandler {
 
     @Override
     public void preProcess(ActionParameters params) throws ActionException {
-        params.requireAdminUser();
+        if (!params.getUser().isAdmin()) {
+            throw new ActionDeniedException("Admin only");
+        }
     }
+
 }

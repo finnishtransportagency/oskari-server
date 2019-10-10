@@ -1,5 +1,6 @@
 package fi.nls.oskari.control.view;
 
+import fi.mml.portti.service.db.permissions.PermissionsService;
 import fi.nls.oskari.annotation.OskariActionRoute;
 import fi.nls.oskari.control.*;
 import fi.nls.oskari.domain.User;
@@ -17,15 +18,12 @@ import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import fi.nls.oskari.view.modifier.ViewModifier;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.oskari.map.userlayer.service.UserLayerDbService;
-import org.oskari.permissions.PermissionService;
 
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 import static fi.nls.oskari.control.ActionConstants.*;
@@ -45,7 +43,6 @@ public class AppSetupHandler extends RestActionHandler {
 
     static final String KEY_PUBDATA = "pubdata";
     static final String KEY_METADATA = "metadata";
-    static final String KEY_PUBLISH_TEMPLATE_UUID = "publishTemplateUuid";
     static final String KEY_VIEWCONFIG = "configuration";
     static final String PARAM_PUBLISHER_VIEW_UUID = "publishedFrom";
 
@@ -59,7 +56,10 @@ public class AppSetupHandler extends RestActionHandler {
 
     private static final boolean VIEW_ACCESS_UUID = PropertyUtil.getOptional(PROPERTY_VIEW_UUID, true);
     // Simple bundles don't require extra processing
-    private static final Set<String> SIMPLE_BUNDLES = new LinkedHashSet();
+    private static final Set<String> SIMPLE_BUNDLES = ConversionHelper.asSet(
+            ViewModifier.BUNDLE_INFOBOX, ViewModifier.BUNDLE_TOOLBAR,
+            ViewModifier.BUNDLE_PUBLISHEDGRID, ViewModifier.BUNDLE_FEATUREDATA2,
+            ViewModifier.BUNDLE_COORDINATETOOL, ViewModifier.BUNDLE_STATSGRID, ViewModifier.BUNDLE_FEEDBACKSERVICE);
 
     // Bundles that we don't want to remove even if publisher doesn't provide config
     private static final Set<String> ALWAYSON_BUNDLES = ConversionHelper.asSet(
@@ -69,7 +69,10 @@ public class AppSetupHandler extends RestActionHandler {
     private static final Set<String> BUNDLE_REQUIRES_DIVMANAZER =
             ConversionHelper.asSet(ViewModifier.BUNDLE_FEATUREDATA2, ViewModifier.BUNDLE_COORDINATETOOL, ViewModifier.BUNDLE_STATSGRID);
 
-    private static final Set<String> BUNDLE_WHITELIST = new LinkedHashSet();
+    // List of bundles that the user is able to publish
+    // mapfull not included since it's assumed to be part of publisher template handled anyways
+    private static final Set<String> BUNDLE_WHITELIST = ConversionHelper.asSet(
+            ViewModifier.BUNDLE_PUBLISHEDMYPLACES2,ViewModifier.BUNDLE_DIVMANAZER);
 
     private static long PUBLISHED_VIEW_TEMPLATE_ID = -1;
 
@@ -93,7 +96,7 @@ public class AppSetupHandler extends RestActionHandler {
     }
 
 
-    public void setPermissionsService(final PermissionService service) {
+    public void setPermissionsService(final PermissionsService service) {
         permissionHelper.setPermissionsService(service);
     }
     public void setOskariLayerService(final OskariLayerService service) {
@@ -114,11 +117,11 @@ public class AppSetupHandler extends RestActionHandler {
         permissionHelper.init();
 
         if (viewService == null) {
-            setViewService(new AppSetupServiceMybatisImpl());
+            setViewService(new ViewServiceIbatisImpl());
         }
 
         if (bundleService == null) {
-            setBundleService(new BundleServiceMybatisImpl());
+            setBundleService(new BundleServiceIbatisImpl());
         }
         try {
             getPublishTemplate();
@@ -133,20 +136,10 @@ public class AppSetupHandler extends RestActionHandler {
         if(configBundles.length > 0) {
             LOG.info("Whitelisting more bundles due to configuration configured ", configBundles);
         }
-        // Init bundles that don't require extra processing
-        SIMPLE_BUNDLES.clear();
-        SIMPLE_BUNDLES.addAll(ConversionHelper.asSet(
-                ViewModifier.BUNDLE_INFOBOX, ViewModifier.BUNDLE_TOOLBAR, ViewModifier.BUNDLE_TIMESERIES,
-                ViewModifier.BUNDLE_PUBLISHEDGRID, ViewModifier.BUNDLE_FEATUREDATA2,
-                ViewModifier.BUNDLE_COORDINATETOOL, ViewModifier.BUNDLE_STATSGRID, ViewModifier.BUNDLE_FEEDBACKSERVICE));
         for(String bundleId : configBundles) {
             SIMPLE_BUNDLES.add(bundleId);
         }
 
-        // List of bundles that the user is able to publish
-        // mapfull not included since it's assumed to be part of publisher template handled anyways
-        BUNDLE_WHITELIST.clear();
-        BUNDLE_WHITELIST.add(ViewModifier.BUNDLE_DIVMANAZER);
         // add all "simple" bundles to the whitelist
         BUNDLE_WHITELIST.addAll(SIMPLE_BUNDLES);
 
@@ -206,9 +199,8 @@ public class AppSetupHandler extends RestActionHandler {
 
         final User user = params.getUser();
 
-        final String publishedFromUuid = params.getRequiredParam(PARAM_PUBLISHER_VIEW_UUID);
-        String viewUuid = params.getHttpParam(PARAM_UUID);
-        final View view = getBaseView(viewUuid, user, publishedFromUuid);
+        final String viewUuid = params.getHttpParam(PARAM_UUID);
+        final View view = getBaseView(viewUuid, user);
         LOG.debug("Processing view with UUID: " + view.getUuid());
 
         // Parse stuff sent by JS
@@ -225,7 +217,8 @@ public class AppSetupHandler extends RestActionHandler {
         }
 
         // setup map state
-        setupMapState(view, user, viewdata.optJSONObject(ViewModifier.BUNDLE_MAPFULL), publishedFromUuid);
+        setupMapState(view, user, viewdata.optJSONObject(ViewModifier.BUNDLE_MAPFULL),
+                params.getRequiredParam(PARAM_PUBLISHER_VIEW_UUID));
 
         // check if we need to add divmanazer
         for(String bundleid : BUNDLE_REQUIRES_DIVMANAZER) {
@@ -265,21 +258,7 @@ public class AppSetupHandler extends RestActionHandler {
         final Bundle myplaces = setupBundle(view, viewdata, ViewModifier.BUNDLE_PUBLISHEDMYPLACES2, false);
         handleMyplacesDrawLayer(myplaces, user);
 
-        boolean isNew = view.getId() == -1;
-        AuditLog audit = AuditLog.user(params.getClientIp(), params.getUser())
-                .withParam("name", view.getName())
-                .withParam("domain", view.getPubDomain());
-
-        View savedView = saveView(view);
-        // we might not have uuid before saving
-        audit.withParam("uuid", view.getUuid());
-        if(isNew) {
-            audit.added(AuditLog.ResourceType.EMBEDDED_VIEW);
-        } else {
-            audit.updated(AuditLog.ResourceType.EMBEDDED_VIEW);
-        }
-
-        return savedView;
+        return saveView(view);
     }
 
     private void setupToolbarStyleInfo(final View view) throws ActionParamsException {
@@ -299,6 +278,9 @@ public class AppSetupHandler extends RestActionHandler {
 
         // setup basic info about view
         final String domain = JSONHelper.getStringFromJSON(view.getMetadata(), KEY_DOMAIN, null);
+        if(domain == null || domain.trim().isEmpty()) {
+            throw new ActionParamsException("Domain missing from metadata");
+        }
         final String name = JSONHelper.getStringFromJSON(view.getMetadata(), KEY_NAME, "Published map " + System.currentTimeMillis());
         final String language = JSONHelper.getStringFromJSON(view.getMetadata(), KEY_LANGUAGE, PropertyUtil.getDefaultLanguage());
 
@@ -330,7 +312,6 @@ public class AppSetupHandler extends RestActionHandler {
         mapfullBundle.setState(mapfullState.toString());
 
         // setup layers based on user rights (double check for user rights)
-        // TODO: AuditLog user generated content going public by calling getPublishableLayers()
         final JSONArray selectedLayers = permissionHelper.getPublishableLayers(mapfullState.optJSONArray(KEY_SELLAYERS), user);
 
         // Override template layer selections
@@ -398,9 +379,7 @@ public class AppSetupHandler extends RestActionHandler {
         }
         JSONObject mapOptions = publisherView.getMapOptions();
         if (mapOptions == null) {
-            LOG.info("Could not get the mapOptions from appsetup for uuid", publisherUUID,
-                    "the embedded maps will use defaults from frontend code");
-            mapOptions = new JSONObject();
+            throw new ActionParamsException("Could not get the mapOptions from appsetup for uuid " + publisherUUID);
         }
         JSONHelper.putValue(mapOptions, KEY_CROSSHAIR, crosshairEnabled(input));
         JSONHelper.putValue(mapOptions, KEY_STYLE, style);
@@ -445,18 +424,14 @@ public class AppSetupHandler extends RestActionHandler {
         }
     }
 
-    private View getBaseView(final String viewUuid, final User user, final String publishedFromUuid) throws ActionException {
+    private View getBaseView(final String viewUuid, final User user) throws ActionException {
 
         if (user.isGuest()) {
             throw new ActionDeniedException("Trying to publish map, but couldn't determine user");
         }
 
-        // Check original view's metadata for template view uuid
-        View publishedFromView = viewService.getViewWithConfByUuId(publishedFromUuid);
-        String templateUuid = publishedFromView.getMetadata().optString(KEY_PUBLISH_TEMPLATE_UUID);
-
         // Get publisher defaults
-        final View templateView = templateUuid.isEmpty() ? getPublishTemplate() : viewService.getViewWithConfByUuId(templateUuid);
+        final View templateView = getPublishTemplate();
 
         // clone a blank view based on template (so template doesn't get updated!!)
         final View view = templateView.cloneBasicInfo();

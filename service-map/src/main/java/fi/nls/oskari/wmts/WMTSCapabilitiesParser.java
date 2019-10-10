@@ -235,11 +235,17 @@ public class WMTSCapabilitiesParser {
 
         List<TileMatrixLimits> limits = new ArrayList<>();
 
+        Map<String, TileMatrix> tileMatrices = tms.getTileMatrixMap();
+
         Iterator<OMElement> it = eTMSLimits.getChildrenWithLocalName("TileMatrixLimits");
         while (it.hasNext()) {
             OMElement e = it.next();
             String ref = XmlHelper.getChildValue(e, "TileMatrix");
-            TileMatrix tm = findTileMatrix(tms, ref);
+            TileMatrix tm = tileMatrices.get(ref);
+            if (tm == null) {
+                throw new XMLStreamException("Referred TileMatrix " + ref
+                        + " does not appear in specified TileMatrixSet " + tms.getId());
+            }
             int minTileRow = Integer.parseInt(XmlHelper.getChildValue(e, "MinTileRow"));
             int maxTileRow = Integer.parseInt(XmlHelper.getChildValue(e, "MaxTileRow"));
             int minTileCol = Integer.parseInt(XmlHelper.getChildValue(e, "MinTileCol"));
@@ -248,28 +254,6 @@ public class WMTSCapabilitiesParser {
         }
 
         return limits;
-    }
-
-    private static TileMatrix findTileMatrix(TileMatrixSet tms, String ref) throws XMLStreamException {
-        Map<String, TileMatrix> tileMatrices = tms.getTileMatrixMap();
-
-        TileMatrix tm = tileMatrices.get(ref);
-        if (tm != null) {
-            return tm;
-        }
-
-        // ref might be prefixed with the id of TileMatrixSet and ':', atleast MapCache does this
-        int i = ref.indexOf(':');
-        if (i > 0 && ref.startsWith(tms.getId())) {
-            ref = ref.substring(i + 1);
-            tm = tileMatrices.get(ref);
-            if (tm != null) {
-                return tm;
-            }
-        }
-
-        throw new XMLStreamException("Referred TileMatrix " + ref
-                + " does not appear in specified TileMatrixSet " + tms.getId());
     }
 
     public static JSONObject asJSON(WMTSCapabilities caps, String url, String currentCrs) {

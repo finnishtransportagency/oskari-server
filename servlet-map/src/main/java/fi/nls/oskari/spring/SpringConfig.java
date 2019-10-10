@@ -21,7 +21,6 @@ import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import org.springframework.web.servlet.i18n.CookieLocaleResolver;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
@@ -44,13 +43,13 @@ import java.util.Locale;
 @EnableWebMvc
 @ComponentScan(
         excludeFilters = @ComponentScan.Filter(type= FilterType.ASSIGNABLE_TYPE, value={SpringConfig.class}),
-        basePackages="fi.nls.oskari, org.oskari")
+        basePackages="fi.nls.oskari")
 public class SpringConfig extends WebMvcConfigurerAdapter implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final Logger LOG = LogFactory.getLogger(SpringConfig.class);
 
     @PostConstruct
-    public void oskariInit() {
+    public void oskariInit() throws Exception {
         // check DB connections/content
         WebappHelper.init();
     }
@@ -131,13 +130,6 @@ public class SpringConfig extends WebMvcConfigurerAdapter implements Application
         cleanupIbatis();
     }
 
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/xhr-prioritizer.js").addResourceLocations("classpath:service-workers/xhr-prioritizer.js");
-        String faviconPath = PropertyUtil.get("favicon.path", "classpath:favicon.ico");
-        registry.addResourceHandler("/favicon.ico").addResourceLocations(faviconPath);
-    }
-
     @Bean
     public MessageSource messageSource() {
         ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
@@ -147,7 +139,7 @@ public class SpringConfig extends WebMvcConfigurerAdapter implements Application
         // found, instead of throwing a NoSuchMessageException
         messageSource.setUseCodeAsDefaultMessage(true);
         messageSource.setFallbackToSystemLocale(false);
-        messageSource.setDefaultEncoding("UTF-8");
+        //messageSource.setDefaultEncoding("UTF-8");
         // # -1 : never reload, 0 always reload
         boolean isDevMode = PropertyUtil.getOptional("development", true);
         if(isDevMode) {

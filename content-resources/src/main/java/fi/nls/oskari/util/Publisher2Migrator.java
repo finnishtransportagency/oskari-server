@@ -1,6 +1,6 @@
 package fi.nls.oskari.util;
 
-import fi.nls.oskari.db.BundleHelper_pre1_52;
+import fi.nls.oskari.db.BundleHelper;
 import fi.nls.oskari.domain.map.view.Bundle;
 import fi.nls.oskari.domain.map.view.View;
 import fi.nls.oskari.domain.map.view.ViewTypes;
@@ -78,17 +78,17 @@ public class Publisher2Migrator {
 
     /**
      * Generate the metadata block that publisher2 uses to return the editor state:
-     "metadata": {
-     "domain": "localhost",
-     "name": "test",
-     "language": "fi",
-     "preview": "desktop",
-     "toolLayout": "userlayout",
-     "style": {
-     "font": "georgia",
-     "toolStyle": "3d-light"
-     }
-     }
+	"metadata": {
+		"domain": "localhost",
+		"name": "test",
+		"language": "fi",
+		"preview": "desktop",
+		"toolLayout": "userlayout",
+		"style": {
+			"font": "georgia",
+			"toolStyle": "3d-light"
+		}
+	}
      */
     public JSONObject createViewMetadata(View view) {
         JSONObject metadata = new JSONObject();
@@ -188,8 +188,8 @@ public class Publisher2Migrator {
     }
 
     public void switchPublisherBundles(final long viewId, Connection conn) throws SQLException {
-        Bundle oldBundle = BundleHelper_pre1_52.getRegisteredBundle(BUNDLE_PUBLISHER_OLD, conn);
-        Bundle newBundle = BundleHelper_pre1_52.getRegisteredBundle(BUNDLE_PUBLISHER_NEW, conn);
+        Bundle oldBundle = BundleHelper.getRegisteredBundle(BUNDLE_PUBLISHER_OLD, conn);
+        Bundle newBundle = BundleHelper.getRegisteredBundle(BUNDLE_PUBLISHER_NEW, conn);
         final String sql = "UPDATE portti_view_bundle_seq " +
                 "SET " +
                 "    bundle_id=?, " +

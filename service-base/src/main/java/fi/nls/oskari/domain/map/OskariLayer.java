@@ -1,7 +1,8 @@
 package fi.nls.oskari.domain.map;
 
+import fi.nls.oskari.log.LogFactory;
+import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.util.IOHelper;
-import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import org.json.JSONObject;
 
@@ -9,6 +10,7 @@ import java.util.*;
 
 public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable<OskariLayer> {
 
+    private static Logger log = LogFactory.getLogger(OskariLayer.class);
     public static final String PROPERTY_AJAXURL = "oskari.ajax.url.prefix";
 
     private static final String TYPE_COLLECTION = "collection";
@@ -19,15 +21,13 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
     public static final String TYPE_ANALYSIS = "analysislayer";
     public static final String TYPE_USERLAYER = "userlayer";
     public static final String TYPE_ARCGIS93 = "arcgis93layer";
-    public static final String TYPE_3DTILES = "tiles3dlayer";
-    public static final String TYPE_VECTOR_TILE = "vectortilelayer";
 
     private int id = -1;
     private int parentId = -1;
+    private String externalId;
 	private String type;
 
     private boolean isBaseMap = false;
-    private boolean isInternal = false;
     private int dataproviderId;
 
     private String name;
@@ -67,7 +67,9 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
 
     private Date created = null;
     private Date updated = null;
+    private Integer orderNumber;
 
+    private Set<MaplayerGroup> maplayerGroups = new HashSet<MaplayerGroup>();
     private Set<DataProvider> dataProviders = new HashSet<DataProvider>();
     private List<OskariLayer> sublayers = new ArrayList<OskariLayer>();
 
@@ -76,6 +78,35 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
 
     public boolean isCollection() {
         return TYPE_COLLECTION.equals(type);
+    }
+
+    // we only link one theme at the moment so get the first one
+	public MaplayerGroup getMaplayerGroup() {
+        if(maplayerGroups == null || maplayerGroups.isEmpty()) {
+            return null;
+        }
+        if(maplayerGroups.size() > 1) {
+            // TODO: remove this when we support more than one theme
+            log.warn("More than one maplayer group, this shouldn't happen!! layerId:", getId(), "- Maplayer groupsN:" , maplayerGroups);
+        }
+		return maplayerGroups.iterator().next();
+	}
+    public Set<MaplayerGroup> getMaplayerGroups() {
+        return maplayerGroups;
+    }
+    public void addGroups(final List<MaplayerGroup> groups) {
+        if(groups != null && !groups.isEmpty()) {
+            maplayerGroups.addAll(groups);
+        }
+    }
+    public void addGroup(final MaplayerGroup group) {
+        if(group != null) {
+            maplayerGroups.add(group);
+        }
+    }
+
+    public void emptyMaplayerGroups() {
+        maplayerGroups.clear();
     }
 
     // we only link one group at the moment so get the first one
@@ -163,6 +194,14 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
 		this.updated = updated;
 	}
 
+	public Integer getOrderNumber() {
+		return orderNumber;
+	}
+
+	public void setOrderNumber(Integer orderNumber) {
+		this.orderNumber = orderNumber;
+	}
+
 	public int getId() {
 		return id;
 	}
@@ -223,8 +262,12 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
         this.parentId = parentId;
     }
 
-    public boolean isSublayer() {
-        return parentId != -1;
+    public String getExternalId() {
+        return externalId;
+    }
+
+    public void setExternalId(String externalId) {
+        this.externalId = externalId;
     }
 
     public boolean isBaseMap() {
@@ -233,14 +276,6 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
 
     public void setBaseMap(boolean baseMap) {
         isBaseMap = baseMap;
-    }
-
-    public boolean isInternal() {
-        return isInternal;
-    }
-
-    public void setInternal(boolean internal) {
-        isInternal = internal;
     }
 
     public int getDataproviderId() {
@@ -314,15 +349,6 @@ public class OskariLayer extends JSONLocalizedNameAndTitle implements Comparable
 
     public void setOptions(JSONObject options) {
         this.options = options;
-    }
-
-    public void addAttribute(String key, Object value) {
-        JSONObject attrib = getAttributes();
-        if (attrib == null) {
-            attrib = new JSONObject();
-        }
-        JSONHelper.putValue(attrib, key, value);
-        setAttributes(attrib);
     }
 
     public JSONObject getAttributes() {

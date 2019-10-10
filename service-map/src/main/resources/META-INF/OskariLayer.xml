@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap      
+    PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"      
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="OskariLayer">
+
+    <select id="maxId" resultClass="int">
+        select max(id) from oskari_maplayer
+    </select>
+
+    <typeAlias alias="OskariLayer" type="fi.nls.oskari.domain.map.OskariLayer" />
+
+    <parameterMap id="LayerInsertParameter" class="OskariLayer">
+        <parameter property="parentId" jdbcType="INTEGER"  javaType="int" />
+        <parameter property="type" />
+        <parameter property="baseMap" />
+        <parameter property="dataproviderId" />
+
+        <parameter property="name" />
+        <parameter property="url" />
+        <parameter property="locale" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+
+        <parameter property="opacity" />
+        <parameter property="style" />
+        <parameter property="minScale" />
+        <parameter property="maxScale" />
+
+        <parameter property="legendImage" />
+        <parameter property="metadataId" />
+
+        <parameter property="params" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="options" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="attributes" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="capabilities" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+
+        <parameter property="gfiXslt" />
+        <parameter property="gfiType" />
+        <parameter property="gfiContent" />
+
+        <parameter property="realtime" />
+        <parameter property="refreshRate" />
+
+        <parameter property="username" />
+        <parameter property="password" />
+
+        <parameter property="version" />
+        <parameter property="srs_name" />
+
+        <parameter property="created" jdbcType="DATETIME" javaType="java.util.Date" />
+        <parameter property="updated" jdbcType="DATETIME" javaType="java.util.Date" />
+
+        <parameter property="capabilitiesLastUpdated" jdbcType="DATETIME" javaType="java.util.Date" />
+        <parameter property="capabilitiesUpdateRateSec" jdbcType="INTEGER" javaType="int" />
+        
+        <!-- parameter property="id" jdbcType="INTEGER" javaType="java.lang.Integer" mode="OUT" / -->
+    </parameterMap>
+
+    <parameterMap id="LayerUpdateParameter" class="OskariLayer"> <!--  extends="OskariLayer.LayerInsertParameter" -->
+        <parameter property="parentId" />
+        <parameter property="baseMap" />
+        <parameter property="dataproviderId" />
+
+        <parameter property="name" />
+        <parameter property="url" />
+        <parameter property="locale" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+
+        <parameter property="opacity" />
+        <parameter property="style" />
+        <parameter property="minScale" />
+        <parameter property="maxScale" />
+
+        <parameter property="legendImage" />
+        <parameter property="metadataId" />
+
+        <parameter property="params" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="options" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="attributes" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+        <parameter property="capabilities" jdbcType="VARCHAR" javaType="org.json.JSONObject" />
+
+        <parameter property="gfiXslt" />
+        <parameter property="gfiType" />
+        <parameter property="gfiContent" />
+
+        <parameter property="realtime" />
+        <parameter property="refreshRate" />
+
+        <parameter property="username" />
+        <parameter property="password" />
+
+        <parameter property="version" />
+        <parameter property="srs_name" />
+
+        <parameter property="updated" jdbcType="DATETIME" javaType="java.util.Date" />
+
+        <parameter property="capabilitiesLastUpdated" jdbcType="DATETIME" javaType="java.util.Date" />
+        <parameter property="capabilitiesUpdateRateSec" jdbcType="INTEGER" javaType="int" />
+        
+        <parameter property="id" />
+    </parameterMap>
+
+    <select id="findById"
+            parameterClass="int"
+            resultClass="java.util.HashMap">
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+        gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+        WHERE
+        l.id = #id# OR l.parentId = #id#
+        ORDER BY l.parentId ASC
+
+    </select>
+
+    <select id="findByParentId"
+            parameterClass="int"
+            resultClass="java.util.HashMap">
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+        gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l 
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+        WHERE
+        l.parentId = #id#
+
+    </select>
+
+    <select id="findByExternalId"
+            parameterClass="String"
+            resultClass="java.util.HashMap">
+
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+        gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l 
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+        WHERE
+        l.externalId = #id#
+        AND l.parentId = -1
+
+    </select>
+    
+    <select id="findByUuId"
+            parameterClass="String"
+            resultClass="java.util.HashMap">
+
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+        gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l 
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+        WHERE
+        m.metadataid = #id#
+        AND l.parentId = -1
+
+    </select>
+
+    <select id="findByUrlAndName"
+            parameterClass="java.util.HashMap"
+            resultClass="java.util.HashMap">
+
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+        gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l 
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+        LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+        WHERE
+        l.name = #name#
+        AND  l.url = #url#
+        AND l.parentId = -1
+
+    </select>
+        
+<select id="findAll"
+        resultClass="java.util.HashMap">
+
+    SELECT
+    l.id,
+    l.parentId,
+    l.externalId,
+    l.type,
+    l.base_map,
+    l.dataprovider_id,
+
+    l.name,
+    l.url,
+    l.locale,
+
+    l.opacity,
+    l.style,
+    l.minscale,
+    l.maxscale,
+
+    l.legend_image,
+    l.metadataId,
+
+    l.params,
+    l.options,
+    l.attributes,
+    l.capabilities,
+
+    l.gfi_xslt,
+    l.gfi_type,
+    l.gfi_content,
+    l.realtime,
+    l.refresh_rate,
+    l.username,
+    l.password,
+    l.version,
+    l.srs_name,
+    m.wkt as geom,
+
+    l.created,
+    l.updated,
+    gl.order_number,
+
+    l.capabilities_last_updated,
+    l.capabilities_update_rate_sec
+
+    FROM
+    oskari_maplayer l
+    LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+    LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+    <dynamic>
+        <isNotEmpty property="id">
+            WHERE
+            l.id = #id# OR l.parentId = #id#
+        </isNotEmpty>
+    </dynamic>
+
+    ORDER BY l.parentId ASC
+
+    </select>
+
+    <select id="findByIdList"
+            parameterClass="map"
+            resultClass="java.util.HashMap">
+
+        SELECT
+        l.id,
+        l.parentId,
+        l.externalId,
+        l.type,
+        l.base_map,
+        l.dataprovider_id,
+
+        l.name,
+        l.url,
+        l.locale,
+
+        l.opacity,
+        l.style,
+        l.minscale,
+        l.maxscale,
+
+        l.legend_image,
+        l.metadataId,
+
+        l.params,
+        l.options,
+        l.attributes,
+        l.capabilities,
+
+        l.gfi_xslt,
+        l.gfi_type,
+        l.gfi_content,
+        l.realtime,
+        l.refresh_rate,
+        l.username,
+        l.password,
+        l.version,
+        l.srs_name,
+        m.wkt as geom,
+
+        l.created,
+        l.updated,
+    	gl.order_number,
+
+        l.capabilities_last_updated,
+        l.capabilities_update_rate_sec
+
+        FROM
+        oskari_maplayer l
+        LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+    	LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+
+        <dynamic prepend="WHERE">
+            <isNotEmpty  property="intList" prepend="OR">
+                l.id in
+                <iterate property="intList" open="(" close=")" conjunction=",">
+                    #intList[]#
+                </iterate>
+
+            </isNotEmpty>
+            <isNotEmpty  property="strList" prepend="OR">
+                l.externalId in
+                <iterate property="strList" open="(" close=")" conjunction=",">
+                    #strList[]#
+                </iterate>
+            </isNotEmpty>
+            <isNotEmpty property="parentIntList" prepend="OR">
+                l.parentId in
+                <iterate property="parentIntList" open="(" close=")" conjunction=",">
+                    #parentIntList[]#
+                </iterate>
+            </isNotEmpty>
+        </dynamic>
+
+        ORDER BY l.parentId ASC
+    </select>
+
+    <select id="findAllWithPositiveUpdateRateSec"
+        resultClass="java.util.HashMap">
+
+    SELECT
+    l.id,
+    l.parentId,
+    l.externalId,
+    l.type,
+    l.base_map,
+    l.dataprovider_id,
+
+    l.name,
+    l.url,
+    l.locale,
+
+    l.opacity,
+    l.style,
+    l.minscale,
+    l.maxscale,
+
+    l.legend_image,
+    l.metadataId,
+
+    l.params,
+    l.options,
+    l.attributes,
+    l.capabilities,
+
+    l.gfi_xslt,
+    l.gfi_type,
+    l.gfi_content,
+    l.realtime,
+    l.refresh_rate,
+    l.username,
+    l.password,
+    l.version,
+    l.srs_name,
+    m.wkt as geom,
+
+    l.created,
+    l.updated,
+   	gl.order_number,
+
+    l.capabilities_last_updated,
+    l.capabilities_update_rate_sec
+
+    FROM
+    oskari_maplayer l
+    LEFT OUTER JOIN oskari_maplayer_metadata m ON  m.metadataid = l.metadataId
+    LEFT OUTER JOIN oskari_maplayer_group_link gl ON gl.maplayerid = l.id
+    WHERE capabilities_update_rate_sec > 0
+    ORDER BY l.parentId ASC
+</select>
+
+    <statement id="delete" parameterClass="int">
+        <![CDATA[
+        delete from oskari_maplayer where parentId=#id# AND parentId <> -1;
+        delete from oskari_maplayer where id=#id#;
+        ]]>
+    </statement>
+
+    <statement id="insert" parameterMap="LayerInsertParameter" >
+        <!--  resultClass="java.lang.Integer" -->
+        insert into oskari_maplayer (
+            parentId,
+            type,
+            base_map,
+            dataprovider_id,
+
+            name,
+            url,
+            locale,
+
+            opacity,
+            style,
+            minscale,
+            maxscale,
+
+            legend_image,
+            metadataId,
+
+            params,
+            options,
+            attributes,
+            capabilities,
+
+            gfi_xslt,
+            gfi_type,
+            gfi_content,
+
+            realtime,
+            refresh_rate,
+
+            username,
+            password,
+
+            version,
+            srs_name,
+
+            created,
+            updated,
+
+            capabilities_last_updated,
+            capabilities_update_rate_sec)
+
+        values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    </statement>
+    
+    <update id="updateOrder" parameterClass="java.util.HashMap">
+        UPDATE oskari_maplayer_group_link
+        SET    order_number = #orderNumber#
+        WHERE maplayerid = #layerId#
+        AND groupid = #groupId#
+    </update>
+    
+    <update id="updateGroup" parameterClass="java.util.HashMap">
+        update oskari_maplayer_group_link set
+            groupid = #newGroupId#
+        where 
+        	groupid = #oldGroupId#
+        	and
+        	maplayerid = #layerId#
+    </update>
+
+    <statement id="update" parameterMap="LayerUpdateParameter">
+        UPDATE oskari_maplayer
+        SET
+        parentId = ?,
+        base_map = ?,
+        dataprovider_id = ?,
+
+        name = ?,
+        url = ?,
+        locale = ?,
+
+        opacity = ?,
+        style = ?,
+        minscale = ?,
+        maxscale = ?,
+
+        legend_image = ?,
+        metadataId = ?,
+
+        params = ?,
+        options = ?,
+        attributes = ?,
+        capabilities = ?,
+
+        gfi_xslt = ?,
+        gfi_type=?,
+        gfi_content=?,
+
+        realtime = ?,
+        refresh_rate = ?,
+
+        username = ?,
+        password = ?,
+
+        version = ?,
+        srs_name = ?,
+
+        updated=?,
+
+        capabilities_last_updated=?,
+        capabilities_update_rate_sec=?
+
+        WHERE id = ?
+    </statement>
+</sqlMap>

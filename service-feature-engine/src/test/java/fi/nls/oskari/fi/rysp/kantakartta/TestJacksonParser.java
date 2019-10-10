@@ -10,8 +10,7 @@ import fi.nls.oskari.fe.output.OutputStreamProcessor;
 import fi.nls.oskari.fe.output.format.json.JsonOutputProcessor;
 import fi.nls.oskari.fi.rysp.recipe.kanta.RYSP_kanta_Liikennevayla_Parser;
 import fi.nls.oskari.fi.rysp.recipe.kanta.RYSP_kanta_Rakennus_Parser;
-import fi.nls.oskari.log.LogFactory;
-import fi.nls.oskari.log.Logger;
+import org.apache.log4j.Logger;
 import org.junit.Test;
 
 import javax.xml.stream.XMLStreamException;
@@ -21,7 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 public class TestJacksonParser extends TestHelper {
-    static final Logger logger = LogFactory.getLogger(TestJacksonParser.class);
+    static final Logger logger = Logger.getLogger(TestJacksonParser.class);
 
     @Test
     public void test_RYSP_kanta_Liikennevayla_wfs_GMLtoJSON()

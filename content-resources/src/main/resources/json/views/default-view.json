@@ -14,6 +14,7 @@
         "wmslayer-openstreetmap-demo-landsat.json"
     ],
     "bundles" : [
+        { "id" : "openlayers-default-theme" },
         {
             "id" : "mapfull",
             "config" : {
@@ -43,6 +44,7 @@
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.Portti2Zoombar" },
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.PanButtons" },
                     { "id" : "Oskari.mapframework.bundle.mapmodule.plugin.FullScreenPlugin" },
+                    { "id" : "Oskari.mapframework.bundle.mapstats.plugin.StatsLayerPlugin" },
                     { "id" : "Oskari.mapframework.mapmodule.VectorLayerPlugin" }
                 ],
                 "layers": []
@@ -54,7 +56,6 @@
                 "zoom": 1
             }
         },
-        { "id" : "drawtools" },
         { "id" : "divmanazer" },
         { "id" : "toolbar" },
         { "id" : "infobox" },
@@ -71,7 +72,7 @@
 		},
         { "id" : "metadataflyout" },
         { "id" : "personaldata" },
-        { "id" : "publisher2" },
+        { "id" : "publisher" },
         { "id" : "maplegend" },
         { "id" : "userguide" },
         { "id" : "heatmap" }

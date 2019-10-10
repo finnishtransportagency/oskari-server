@@ -158,10 +158,6 @@ public class Cache<T> {
         return (lastFlush + expiration < now);
     }
 
-    public long getTimeToExpirationMs() {
-        return expiration - (currentTime() - lastFlush);
-    }
-
     private static long currentTime() {
         return System.nanoTime() / 1000000L;
     }

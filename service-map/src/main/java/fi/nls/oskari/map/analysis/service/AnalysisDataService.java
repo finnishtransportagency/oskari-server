@@ -2,8 +2,8 @@ package fi.nls.oskari.map.analysis.service;
 
 import fi.nls.oskari.analysis.AnalysisHelper;
 import fi.nls.oskari.domain.User;
-import fi.nls.oskari.domain.map.UserDataStyle;
 import fi.nls.oskari.domain.map.analysis.Analysis;
+import fi.nls.oskari.domain.map.analysis.AnalysisStyle;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.analysis.domain.*;
@@ -42,13 +42,14 @@ public class AnalysisDataService {
         final String wpsUser = PropertyUtil.get("geoserver.wms.user");
         final String wpsUserPass = PropertyUtil.get("geoserver.wms.pass");
 
+        final AnalysisStyle style = new AnalysisStyle();
         final Analysis analysis = new Analysis();
-        final UserDataStyle style = analysis.getStyle();
+
         try {
             // Insert style row
             final JSONObject stylejs = JSONHelper
                     .createJSONObject(analysislayer.getStyle());
-            style.populateFromOskariJSON(stylejs);
+            style.populateFromJSON(stylejs);
         } catch (JSONException e) {
             log.debug("Unable to get AnalysisLayer style JSON", e);
         }
@@ -149,14 +150,14 @@ public class AnalysisDataService {
      */
     public Analysis mergeAnalysisData(AnalysisLayer analysislayer, String json, User user) throws ServiceException {
 
-        final UserDataStyle style = new UserDataStyle();
+        final AnalysisStyle style = new AnalysisStyle();
         Analysis analysis = null;
 
         try {
             // Insert style row
             final JSONObject stylejs = JSONHelper
                     .createJSONObject(analysislayer.getStyle());
-            style.populateFromOskariJSON(stylejs);
+            style.populateFromJSON(stylejs);
         } catch (JSONException e) {
             log.debug("Unable to get AnalysisLayer style JSON", e);
         }
@@ -178,7 +179,6 @@ public class AnalysisDataService {
             analysis.setStyle_id(style.getId());
             analysis.setUuid(user.getUuid());
             analysis.setOld_id(ids.get(0));
-            analysis.setStyle(style);
             log.debug("Adding analysis row", analysis);
             analysisService.insertAnalysisRow(analysis);
 

@@ -130,10 +130,14 @@ public class ActionControl {
 
             try {
                 actions.get(action).handleAction(params);
-            } catch (ActionException ex) {
-                throw ex;
             } catch (Exception ex) {
-                throw new ActionException("Unhandled exception occured", ex);
+                if(ex instanceof ActionException) {
+                    throw (ActionException) ex;
+                }
+                else {
+                    ex.printStackTrace();
+                    throw new ActionException("Unhandled exception occured", ex);
+                }
             } finally {
                 if(actionTimer != null) {
                     actionTimer.stop();

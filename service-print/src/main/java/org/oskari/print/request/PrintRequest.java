@@ -2,19 +2,11 @@ package org.oskari.print.request;
 
 import java.util.List;
 
-import org.geotools.referencing.CRS;
-import org.opengis.referencing.FactoryException;
-import org.opengis.referencing.crs.CoordinateReferenceSystem;
-
-import fi.nls.oskari.domain.User;
-
 public class PrintRequest {
-    
-    private User user;
+
     private double east;
     private double north;
     private String srsName;
-    private CoordinateReferenceSystem crs;
     private double resolution;
     private int width;
     private int height;
@@ -24,22 +16,8 @@ public class PrintRequest {
     private boolean showLogo;
     private boolean showScale;
     private boolean showDate;
-    private boolean showTimeSeriesTime;
     private String title;
     private List<PrintLayer> layers;
-    private String markers;
-    private String scaleText;
-    private String time;
-    private String formattedTime;
-    private String timeseriesLabel;
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
 
     public double getEast() {
         return east;
@@ -61,13 +39,8 @@ public class PrintRequest {
         return srsName;
     }
 
-    public void setSrsName(String srsName) throws FactoryException {
+    public void setSrsName(String srsName) {
         this.srsName = srsName;
-        this.crs = CRS.decode(srsName, true);
-    }
-
-    public CoordinateReferenceSystem getCrs() {
-        return crs;
     }
 
     public double getResolution() {
@@ -134,14 +107,6 @@ public class PrintRequest {
         this.showDate = showDate;
     }
 
-    public boolean isShowTimeSeriesTime() {
-        return showTimeSeriesTime;
-    }
-
-    public void setShowTimeSeriesTime(boolean showTimeSeriesTime) {
-        this.showTimeSeriesTime = showTimeSeriesTime;
-    }
-
     public String getTitle() {
         return title;
     }
@@ -158,14 +123,6 @@ public class PrintRequest {
         this.layers = layers;
     }
 
-    public String getMarkers() {
-        return markers;
-    }
-
-    public void setMarkers(String markers) {
-        this.markers = markers;
-    }
-
     public boolean isShowLogo() {
         return showLogo;
     }
@@ -174,53 +131,4 @@ public class PrintRequest {
         this.showLogo = showLogo;
     }
 
-    public String getScaleText() {
-        return scaleText;
-    }
-
-    public void setScaleText(String scaleText) {
-        this.scaleText = scaleText;
-    }
-
-    public boolean isScaleText(){
-        return (this.scaleText != null && !this.scaleText.isEmpty());
-    }
-    
-    public double[] getBoundingBox() {
-        double halfResolution = resolution * 0.5;
-
-        double widthHalf = width * halfResolution;
-        double heightHalf = height * halfResolution;
-
-        return new double[] {
-                east - widthHalf,
-                north - heightHalf,
-                east + widthHalf,
-                north + heightHalf
-        };
-    }
-    
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
-    }
-
-    public String getFormattedTime() {
-        return formattedTime;
-    }
-
-    public void setFormattedTime(String formattedTime) {
-        this.formattedTime = formattedTime;
-    }
-
-    public String getTimeseriesLabel() {
-        return timeseriesLabel;
-    }
-
-    public void setTimeseriesLabel(String timeseriesLabel) {
-        this.timeseriesLabel = timeseriesLabel;
-    }
 }

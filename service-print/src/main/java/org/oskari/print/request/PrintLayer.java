@@ -1,65 +1,53 @@
 package org.oskari.print.request;
 
-import java.util.Optional;
-import org.json.JSONObject;
-import org.oskari.service.user.UserLayerService;
-import org.oskari.print.util.StyleUtil;
-import fi.nls.oskari.util.JSONHelper;
-import fi.nls.oskari.domain.map.OskariLayer;
-
 public class PrintLayer {
 
-    private final int zIndex;
-    private String layerId;
-    private OskariLayer oskariLayer;
+    private int id;
+    private String type;
+    private String url;
+    private String name;
     private String style;
+    private String srsName;
+    private String version;
     private int opacity;
-    private Optional<UserLayerService> processor;
+    private String username;
+    private String password;
     private PrintTile[] tiles;
-    private JSONObject customStyle;
-
-    public PrintLayer(int zIndex) {
-        this.zIndex = zIndex;
-    }
-
-    public int getZIndex() {
-        return zIndex;
-    }
-
-    public String getLayerId() {
-        return layerId;
-    }
-
-    public void setLayerId(String layerId) {
-        this.layerId = layerId;
-    }
-
-    public OskariLayer getOskariLayer() {
-        return oskariLayer;
-    }
-
-    public void setOskariLayer(OskariLayer oskariLayer) {
-        this.oskariLayer = oskariLayer;
-    }
 
     public int getId() {
-        return oskariLayer.getId();
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
     }
 
     public String getType() {
-        return oskariLayer.getType();
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public String getName() {
-        return oskariLayer.getName();
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getUrl() {
-        return oskariLayer.getUrl();
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
     }
 
     public String getStyle() {
-        return style != null ? style : oskariLayer.getStyle();
+        return style;
     }
 
     public void setStyle(String style) {
@@ -67,7 +55,11 @@ public class PrintLayer {
     }
 
     public String getVersion() {
-        return oskariLayer.getVersion();
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 
     public int getOpacity() {
@@ -79,11 +71,19 @@ public class PrintLayer {
     }
 
     public String getUsername() {
-        return oskariLayer.getUsername();
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getPassword() {
-        return oskariLayer.getPassword();
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public PrintTile[] getTiles() {
@@ -94,43 +94,12 @@ public class PrintLayer {
         this.tiles = tiles;
     }
 
-    public Optional<UserLayerService> getProcessor() {
-        return processor == null ? Optional.empty() : processor;
+    public String getSrsName() {
+        return srsName;
     }
 
-    public void setProcessor(Optional<UserLayerService> processor) {
-        this.processor = processor;
-    }
-
-    public void setCustomStyle (JSONObject customStyle) { this.customStyle = customStyle; }
-
-    public JSONObject getCustomStyle () { return customStyle; }
-
-    public JSONObject getOskariStyle () {
-        if (customStyle != null) {
-            return customStyle;
-        }
-        if (getProcessor().isPresent()){
-            return processor.get().getOskariStyle(layerId);
-        }
-        JSONObject defaultStyle = StyleUtil.getDefaultOskariStyle();
-        if (StyleUtil.OSKARI_DEFAULT.equals(style)){
-            return defaultStyle;
-        }
-        JSONObject options = oskariLayer.getOptions();
-        JSONObject styles = JSONHelper.getJSONObject(options, StyleUtil.STYLES_JSON_KEY);
-        if (styles == null) {
-            return defaultStyle;
-        }
-        if (styles.has(style)){
-            JSONObject namedStyle = JSONHelper.getJSONObject(
-                    JSONHelper.getJSONObject(
-                            JSONHelper.getJSONObject(styles, style),
-                            getOskariLayer().getName()),
-                    "featureStyle");
-            return JSONHelper.merge(defaultStyle, namedStyle);
-        }
-        return defaultStyle;
+    public void setSrsName(String srsName) {
+        this.srsName = srsName;
     }
 
 }

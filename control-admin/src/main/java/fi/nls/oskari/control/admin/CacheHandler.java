@@ -11,7 +11,6 @@ import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
-import org.oskari.log.AuditLog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -24,40 +23,25 @@ public class CacheHandler extends RestActionHandler {
     private Logger log = LogFactory.getLogger(CacheHandler.class);
 
     @Override
-    public void handleGet(ActionParameters params) {
+    public void handleGet(ActionParameters params) throws ActionException {
         final JSONObject response = new JSONObject();
         final JSONArray list = new JSONArray();
         Set<String> cacheNames = CacheManager.getCacheNames();
         for (String name : cacheNames) {
             Cache cache = CacheManager.getCache(name);
-            list.put(getCacheJSON(cache));
+            final JSONObject json = new JSONObject();
+            JSONHelper.putValue(json, "name", cache.getName());
+            JSONHelper.putValue(json, "size", cache.getSize());
+            JSONHelper.putValue(json, "limit", cache.getLimit());
+            JSONHelper.putValue(json, "expiration", (cache.getExpiration() / 1000));
+            JSONHelper.putValue(json, "lastFlush", (cache.getLastFlush() / 1000));
+            list.put(json);
         }
         JSONHelper.putValue(response, "caches", list);
         JSONHelper.putValue(response, "timestamp", new Date());
         ResponseHelper.writeResponse(params, response);
     }
 
-    @Override
-    public void handlePost(ActionParameters params) throws ActionException {
-        Cache cache = CacheManager.getCache(params.getRequiredParam("name"));
-        cache.flush(true);
-        handleGet(params);
-
-        AuditLog.user(params.getClientIp(), params.getUser())
-                .withParam("name", cache.getName())
-                .withMsg("Flushed")
-                .updated("Cache");
-    }
-
-    private JSONObject getCacheJSON(Cache cache) {
-        final JSONObject json = new JSONObject();
-        JSONHelper.putValue(json, "name", cache.getName());
-        JSONHelper.putValue(json, "size", cache.getSize());
-        JSONHelper.putValue(json, "limit", cache.getLimit());
-        JSONHelper.putValue(json, "expiration", cache.getExpiration() / 1000);
-        JSONHelper.putValue(json, "secondsToExpire", cache.getTimeToExpirationMs() / 1000);
-        return json;
-    }
 
     @Override
     public void preProcess(ActionParameters params) throws ActionException {

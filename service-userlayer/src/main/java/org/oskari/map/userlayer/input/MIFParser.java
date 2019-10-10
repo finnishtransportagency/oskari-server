@@ -10,7 +10,6 @@ import org.geotools.data.ogr.bridj.BridjOGRDataStoreFactory;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.data.simple.SimpleFeatureSource;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
-import org.oskari.map.userlayer.service.UserLayerException;
 
 import fi.nls.oskari.service.ServiceException;
 
@@ -42,22 +41,13 @@ public class MIFParser implements FeatureCollectionParser {
                 sourceCRS = crs;
             }
             return FeatureCollectionParsers.read(source, sourceCRS, targetCRS);
-        } catch (ServiceException e) {
-            // forward error on read: if in file UserLayerException. if in service ServiceException
-            throw e;
         } catch (Exception e) {
-            throw new UserLayerException("Failed to parse MIF: " + e.getMessage(),
-                    UserLayerException.ErrorType.PARSER, UserLayerException.ErrorType.INVALID_FORMAT);
+            throw new ServiceException("Failed to parse MIF", e);
         } finally {
             if (store != null) {
                 store.dispose();
             }
         }
-    }
-
-    @Override
-    public String getSuffix() {
-        return SUFFIX;
     }
 
 }

@@ -3,20 +3,22 @@ package fi.nls.oskari.search.channel;
 import java.net.HttpURLConnection;
 import java.util.*;
 
+import fi.mml.portti.domain.permissions.Permissions;
+import fi.mml.portti.service.db.permissions.PermissionsService;
+import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.cache.Cache;
 import fi.nls.oskari.cache.CacheManager;
 import fi.nls.oskari.domain.SelectItem;
 import fi.nls.oskari.domain.User;
+import fi.nls.oskari.domain.map.OskariLayer;
+import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.geometry.WKTHelper;
+import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.JSONHelper;
 import org.geotools.geojson.geom.GeometryJSON;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.oskari.permissions.PermissionService;
-import org.oskari.permissions.model.PermissionType;
-import org.oskari.permissions.model.Resource;
-import org.oskari.permissions.model.ResourceType;
 
 import fi.nls.oskari.wfs.WFSSearchChannelsConfiguration;
 
@@ -48,15 +50,17 @@ public class WFSSearchChannel extends SearchChannel {
     public static final String GT_GEOM_MULTIPOLYGON = "MULTIPOLYGON";
 
 	private WFSSearchChannelsConfiguration config;
-    private PermissionService permissionsService;
+    private static PermissionsService permissionsService;
 
 	public WFSSearchChannel(WFSSearchChannelsConfiguration config) {
         this.config = config;
 	}
 
-    PermissionService getPermissionService() {
+    PermissionsService getPermissionService() {
+        // TODO: use OskariComponentManager when PermissionService supports it
+        //return OskariComponentManager.getComponentOfType(PermissionsService.class);
         if(permissionsService == null) {
-            permissionsService = OskariComponentManager.getComponentOfType(PermissionService.class);
+            permissionsService = new PermissionsServiceIbatisImpl();
         }
         return permissionsService;
     }
@@ -65,27 +69,20 @@ public class WFSSearchChannel extends SearchChannel {
         return config.getLocale();
     }
 
-    /**
-     * USing WFS search channel is permitted if the user has the VIEW_LAYER permission for the
-     * WFS-layer that is used for searching.
-     * @param user
-     * @return
-     */
     public boolean hasPermission(User user) {
         // check if user roles have VIEW_LAYER permission to wfslayer
         Cache<Resource> cache = CacheManager.getCache(this.getClass().getName());
-        final String cacheKey = Integer.toString(config.getWFSLayerId());
+        final String cacheKey = config.getUrl() + config.getLayerName();
         Resource resource = cache.get(cacheKey);
         if(resource == null) {
-            Optional<Resource> maybeResource =
-                    getPermissionService().findResource(ResourceType.maplayer, cacheKey);
-            if(!maybeResource.isPresent()) {
+            OskariLayerResource res = new OskariLayerResource(OskariLayer.TYPE_WFS, config.getUrl(), config.getLayerName());
+            resource = getPermissionService().findResource(res);
+            if(resource == null) {
                 return false;
             }
-            resource = maybeResource.get();
             cache.put(cacheKey, resource);
         }
-        return resource.hasPermission(user, PermissionType.VIEW_LAYER);
+        return resource.hasPermission(user, Permissions.PERMISSION_TYPE_VIEW_LAYER);
     }
 
     public WFSChannelHandler getHandler() {
@@ -162,7 +159,6 @@ public class WFSSearchChannel extends SearchChannel {
         urlParams.put("typeName", config.getLayerName());
         urlParams.put("srsName", config.getSrs());
 
-        // TODO: migrate to OskariWFSClient?
         if(maxFeatures != -1){
             if(config.getVersion().equals("1.1.0")){
                 urlParams.put("maxFeatures", Integer.toString(maxFeatures));

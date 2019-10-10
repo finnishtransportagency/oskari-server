@@ -81,7 +81,7 @@ public class DataSourceUpdater implements Runnable {
         final List<StatisticalIndicator> processIndicators = new ArrayList<>();
 
         // read work queue to Java classes
-        String json = JedisManager.popList(workCacheKey, true);
+        String json = JedisManager.popList(workCacheKey);
         while(json != null) {
             try {
                 StatisticalIndicator indicator = MAPPER.readValue(json, StatisticalIndicator.class);
@@ -89,7 +89,7 @@ public class DataSourceUpdater implements Runnable {
             } catch (IOException ex) {
                 LOG.error(ex, "Couldn't read indicator data from work queue:", json);
             }
-            json = JedisManager.popList(workCacheKey, true);
+            json = JedisManager.popList(workCacheKey);
         }
         return processIndicators;
     }

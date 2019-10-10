@@ -1,6 +1,5 @@
 package fi.nls.oskari.analysis;
 
-import fi.mml.map.mapwindow.util.OskariLayerWorker;
 import fi.nls.oskari.domain.map.analysis.Analysis;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
@@ -10,7 +9,6 @@ import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.oskari.permissions.model.PermissionType;
 
 /**
  * Provides utility methods for analysis
@@ -50,8 +48,6 @@ public class AnalysisHelper {
     private static final String JSKEY_NO_DATA = "no_data";
     private static final String JSKEY_METHODPARAMS = "methodParams";
     private static final String LAYER_PREFIX = "analysis_";
-    private static final String JSKEY_OPTIONS = "options";
-    private static final String JSKEY_STYLES = "styles";
 
     private static final String ANALYSIS_ORGNAME = ""; // managed in front
     private static final String ANALYSIS_INSPIRE = ""; // managed in front
@@ -60,8 +56,6 @@ public class AnalysisHelper {
     private static final String PROPERTY_RENDERING_URL = PropertyUtil.getOptional("analysis.rendering.url");
     private static final String ANALYSIS_RENDERING_URL = getAnalysisRenderingUrl();
     private static final String ANALYSIS_RENDERING_ELEMENT = PropertyUtil.get("analysis.rendering.element");
-
-
 
     private static final Logger log = LogFactory.getLogger(AnalysisHelper.class);
     /**
@@ -145,7 +139,6 @@ public class AnalysisHelper {
             json.put(JSKEY_METHOD, JSONHelper.getStringFromJSON(analyse_js,
                     JSKEY_METHOD, "n/a"));
             json.put(JSKEY_RESULT, "");
-            json.put(JSKEY_OPTIONS, JSONHelper.createJSONObject(JSKEY_STYLES, al.getStyle().getStyleForLayerOptions()));
             if (analyse_js.has(JSKEY_METHODPARAMS)) {
                 // Put nodata value to analysis layer, if it was in analysis source layer
                 JSONObject params = JSONHelper.getJSONObject(analyse_js, JSKEY_METHODPARAMS);
@@ -181,18 +174,6 @@ public class AnalysisHelper {
         }
 
         return json;
-    }
-
-    public static JSONObject getAnalysisPermissions(boolean hasPublish, boolean hasDownload) {
-
-        final JSONObject permissions = new JSONObject();
-        if (hasPublish) {
-            JSONHelper.putValue(permissions, PermissionType.PUBLISH.getJsonKey(), OskariLayerWorker.PUBLICATION_PERMISSION_OK);
-        }
-        if (hasDownload) {
-            JSONHelper.putValue(permissions, PermissionType.DOWNLOAD.getJsonKey(), OskariLayerWorker.DOWNLOAD_PERMISSION_OK);
-        }
-        return permissions;
     }
 
     private static JSONArray getAnalyseFields(Analysis analysis) {

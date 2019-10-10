@@ -186,10 +186,8 @@ public class CSWIsoRecord {
             // TODO?
         }
         JSONHelper.putValue(ret, "dataQualities", arr);
-        if (dataQualityObject != null && dataQualityObject.getLineageStatements() != null) {
-            arr = new JSONArray(dataQualityObject.getLineageStatements());
-            JSONHelper.putValue(ret, "lineageStatements", arr);
-        }
+        arr = new JSONArray(dataQualityObject.getLineageStatements());
+        JSONHelper.putValue(ret, "lineageStatements", arr);
         return ret;
     }
 

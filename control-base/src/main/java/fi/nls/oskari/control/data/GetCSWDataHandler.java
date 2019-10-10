@@ -130,8 +130,7 @@ public class GetCSWDataHandler extends ActionHandler {
                 String fname = g.getFileName();
                 final boolean replaceImageURL = fname != null
                         && !fname.isEmpty()
-                        && !fname.startsWith("http://")
-                        && !fname.startsWith("https://");
+                        && !fname.startsWith("http://");
 
                 if (replaceImageURL) {
                     g.setFileName(prefix + fname);

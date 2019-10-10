@@ -1,7 +1,6 @@
 package fi.nls.oskari.pojo;
 
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 import java.util.List;
 
