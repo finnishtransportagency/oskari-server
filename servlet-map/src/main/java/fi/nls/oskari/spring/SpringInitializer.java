@@ -32,11 +32,12 @@ public class SpringInitializer implements WebApplicationInitializer {
         ServletRegistration.Dynamic dispatcher = servletContext.addServlet("DispatcherServlet", new DispatcherServlet(context));
         dispatcher.setLoadOnStartup(1);
         dispatcher.addMapping("/");
+        dispatcher.setAsyncSupported(true);
     }
 
     private AnnotationConfigWebApplicationContext getContext() {
         final AnnotationConfigWebApplicationContext context = new AnnotationConfigWebApplicationContext();
-        context.getEnvironment().setDefaultProfiles(EnvHelper.PROFILE_LOGIN_DB);
+        context.getEnvironment().setDefaultProfiles(SpringEnvHelper.PROFILE_LOGIN_DB);
         final String[] configuredProfiles = PropertyUtil.getCommaSeparatedList("oskari.profiles");
         if (configuredProfiles.length > 0) {
             log.info("Using profiles:", configuredProfiles);

@@ -1,7 +1,9 @@
 package fi.nls.oskari.control.layer;
 
-import fi.mml.portti.domain.permissions.Permissions;
-import fi.mml.portti.service.db.permissions.PermissionsService;
+import org.oskari.permissions.PermissionService;
+import org.oskari.permissions.model.PermissionType;
+import org.oskari.permissions.model.Resource;
+
 import fi.nls.oskari.cache.Cache;
 import fi.nls.oskari.cache.CacheManager;
 import fi.nls.oskari.control.ActionDeniedException;
@@ -11,9 +13,10 @@ import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
-import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.permission.domain.Resource;
+import org.oskari.permissions.model.ResourceType;
+
+import java.util.Optional;
 
 /**
  * Created by SMAKINEN on 27.8.2015.
@@ -26,9 +29,9 @@ public class PermissionHelper {
     private final Cache<Resource> resourceCache = CacheManager.getCache(PermissionHelper.class.getName() + RESOURCE_CACHE_NAME);
     private final Cache<OskariLayer> layerCache = CacheManager.getCache(PermissionHelper.class.getName() + LAYER_CACHE_NAME);
     private OskariLayerService layerService;
-    private PermissionsService permissionsService;
+    private PermissionService permissionsService;
 
-    public PermissionHelper(OskariLayerService layerService, PermissionsService permissionsService) {
+    public PermissionHelper(OskariLayerService layerService, PermissionService permissionsService) {
         this.layerService = layerService;
         this.permissionsService = permissionsService;
     }
@@ -40,18 +43,22 @@ public class PermissionHelper {
      * @return
      * @throws ActionException
      */
-    public OskariLayer getLayer(final String layerId, final User user) throws ActionException {
+    public OskariLayer getLayer(final int layerId, final User user) throws ActionException {
 
         final OskariLayer layer = getLayer(layerId);
         if (layer == null) {
             throw new ActionParamsException("Layer not found for id: " + layerId);
         }
+        if(layer.isInternal()) {
+            // myplaces etc don't have resources
+            return layer;
+        }
 
         // Check permissions
         final Resource resource = getResource(layer);
         final boolean hasPermission =
-                resource.hasPermission(user, Permissions.PERMISSION_TYPE_VIEW_LAYER) ||
-                        resource.hasPermission(user, Permissions.PERMISSION_TYPE_VIEW_PUBLISHED);
+                resource.hasPermission(user, PermissionType.VIEW_LAYER) ||
+                        resource.hasPermission(user, PermissionType.VIEW_PUBLISHED);
 
         if (!hasPermission) {
             throw new ActionDeniedException("User doesn't have permissions for requested layer");
@@ -64,15 +71,16 @@ public class PermissionHelper {
      * @param id Layer id
      * @return layer
      */
-    private OskariLayer getLayer(final String id) {
-        OskariLayer layer = layerCache.get(id);
+    private OskariLayer getLayer(final int id) {
+        String cacheKey = Integer.toString(id);
+        OskariLayer layer = layerCache.get(cacheKey);
         if (layer != null) {
             return layer;
         }
         layer = layerService.find(id);
         if (layer != null) {
             LOG.debug("Caching a layer with id ", id);
-            layerCache.put(id, layer);
+            layerCache.put(cacheKey, layer);
         }
         return layer;
     }
@@ -83,18 +91,20 @@ public class PermissionHelper {
      */
     private Resource getResource(final OskariLayer layer) {
 
-        final Resource layerResource = new OskariLayerResource(layer);
-        Resource resource = resourceCache.get(layerResource.getMapping());
+        String mapping = Integer.toString(layer.getId());
+        Resource resource = resourceCache.get(mapping);
         if (resource != null) {
             return resource;
         }
-        resource = permissionsService.findResource(layerResource);
-        if (resource != null && !resource.getPermissions().isEmpty()) {
-            LOG.debug("Caching a layer permission resource", resource, "Permissions", resource.getPermissions());
-            resourceCache.put(layerResource.getMapping(),resource);
+        Optional<Resource> dbRes = permissionsService.findResource(ResourceType.maplayer, mapping);
+        if (!dbRes.isPresent()) {
+            LOG.warn("Permissions not found for layer:", layer.getId());
         } else {
-            LOG.warn("Trying to cache layer with no resources");
+            resource = dbRes.get();
+            LOG.debug("Caching a layer permission resource", resource, "Permissions", resource.getPermissions());
+            resourceCache.put(mapping, resource);
         }
+
         return resource;
     }
 }

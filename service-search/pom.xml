@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>fi.nls.oskari</groupId>
 		<artifactId>oskari-parent</artifactId>
-        <version>1.46.0</version>
+        <version>1.53.1</version>
 	</parent>
 
 	<groupId>fi.nls.oskari.service</groupId>
@@ -18,6 +18,11 @@
 			<groupId>fi.nls.oskari.service</groupId>
 			<artifactId>oskari-base</artifactId>
 		</dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
 	</dependencies>
 	<build>
 		<pluginManagement>

@@ -14,9 +14,14 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 /**
  * Each statistical datasource plugin encapsulates access to a single external API
@@ -58,11 +63,26 @@ public abstract class StatisticalDatasourcePlugin {
 
     private static final Logger LOG = LogFactory.getLogger(StatisticalDatasourcePlugin.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    // update at most 4 datasources at a time
+    private static final ExecutorService UPDATE_SCHEDULER = Executors.newFixedThreadPool(4);
 
     /**
      * This is called when datasource should start processing the indicators. Processed indicators
      */
     public abstract void update();
+
+    public boolean canModify(User user) {
+        return false;
+    }
+
+    public StatisticalIndicator saveIndicator(StatisticalIndicator indicator, User user) {
+        // NO-OP
+        throw new SecurityException("Unable to save");
+    }
+    public void saveIndicatorData(StatisticalIndicator indicator, long regionsetId, Map<String, IndicatorValue> data, User user) {
+        // NO-OP
+        throw new SecurityException("Unable to save");
+    }
 
     /**
      * Method to fetch indicator data.
@@ -89,9 +109,7 @@ public abstract class StatisticalDatasourcePlugin {
             updater = new DataSourceUpdater(this);
         }
         // TODO: cancel previous if running?
-        Thread thread = new Thread(updater);
-        thread.setPriority(Thread.MIN_PRIORITY);
-        thread.start();
+        UPDATE_SCHEDULER.submit(updater);
     }
 
     /**
@@ -118,15 +136,22 @@ public abstract class StatisticalDatasourcePlugin {
         IndicatorSet set = new IndicatorSet();
         set.setComplete(!updateRequired && !status.isUpdating());
         final List<StatisticalIndicator> indicators = getProcessedIndicators();
-        // filter by user
-        final List<StatisticalIndicator> result = new ArrayList<>();
-        for(StatisticalIndicator ind : indicators) {
-            if(hasPermission(ind, user)) {
-                result.add(ind);
-            }
+        if(indicators.isEmpty() && set.isComplete() && lastUpdateAtleastSecondsAgo(status.getLastUpdate(), 60)) {
+            // we might have an empty set of indicators cached and update isn't scheduled yet
+            // trigger a fail-safe update after 60 seconds of serving the empty list
+            set.setComplete(false);
+            startUpdater();
         }
+        // filter by user
+        final List<StatisticalIndicator> result = indicators.stream()
+                .filter(ind -> hasPermission(ind, user))
+                .collect(Collectors.toList());
         set.setIndicators(result);
         return set;
+    }
+
+    private boolean lastUpdateAtleastSecondsAgo(Date lastUpdate, int seconds) {
+        return lastUpdate != null && lastUpdate.toInstant().plusSeconds(seconds).isBefore(Instant.now());
     }
 
     public StatisticalIndicator getIndicator(User user, String indicatorId) {
@@ -188,10 +213,10 @@ public abstract class StatisticalDatasourcePlugin {
             // should we save it to listing directly?
         }
         // this is used for metadata requests
-        saveIndicator(indicator);
+        writeToCache(indicator);
     }
 
-    private void saveIndicator(StatisticalIndicator indicator) {
+    private void writeToCache(StatisticalIndicator indicator) {
         try {
             String json = MAPPER.writeValueAsString(indicator);
             JedisManager.setex(getIndicatorMetadataKey(indicator.getId()), JedisManager.EXPIRY_TIME_DAY * 7, json);

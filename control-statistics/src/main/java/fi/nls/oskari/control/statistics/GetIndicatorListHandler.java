@@ -6,6 +6,7 @@ import fi.nls.oskari.control.ActionHandler;
 import fi.nls.oskari.control.ActionParameters;
 import fi.nls.oskari.control.ActionParamsException;
 import fi.nls.oskari.control.statistics.data.IndicatorSet;
+import fi.nls.oskari.control.statistics.data.StatisticalIndicatorLayer;
 import fi.nls.oskari.control.statistics.plugins.StatisticalDatasourcePlugin;
 import fi.nls.oskari.control.statistics.plugins.StatisticalDatasourcePluginManager;
 import fi.nls.oskari.control.statistics.data.StatisticalIndicator;
@@ -14,6 +15,12 @@ import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import static fi.nls.oskari.control.ActionConstants.*;
 
 /**
@@ -31,7 +38,7 @@ public class GetIndicatorListHandler extends ActionHandler {
 
     private static final String KEY_COMPLETE = "complete";
     private static final String KEY_INDICATORS = "indicators";
-    private static final String PARAM_DATASOURCE = "datasource";
+    private static final String KEY_REGIONSETS = "regionsets";
     /**
      * For now, this uses pretty much static global store for the plugins.
      * In the future it might make sense to inject the pluginManager references to different controllers using DI.
@@ -40,7 +47,7 @@ public class GetIndicatorListHandler extends ActionHandler {
 
     @Override
     public void handleAction(ActionParameters ap) throws ActionException {
-        final int srcId = ap.getRequiredParamInt(PARAM_DATASOURCE);
+        final int srcId = ap.getRequiredParamInt(StatisticsHelper.PARAM_DATASOURCE_ID);
         JSONObject response = getIndicatorsListJSON(srcId, ap.getUser(), ap.getLocale().getLanguage());
         ResponseHelper.writeResponse(ap, response);
     }
@@ -57,22 +64,34 @@ public class GetIndicatorListHandler extends ActionHandler {
         }
 
         JSONObject response = new JSONObject();
-        final JSONArray indicators = new JSONArray();
-        JSONHelper.putValue(response, KEY_INDICATORS, indicators);
         IndicatorSet set = plugin.getIndicatorSet(user);
         JSONHelper.putValue(response, KEY_COMPLETE, set.isComplete());
-        for (StatisticalIndicator indicator : set.getIndicators()) {
-            if(indicator.getLayers() != null && indicator.getLayers().size() > 0) {
-                indicators.put(toJSON(indicator, language));
-            }
-        }
+        List<JSONObject> indicators = set.getIndicators().stream()
+                .map(i -> toJSON(i, language))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+        JSONHelper.putValue(response, KEY_INDICATORS, new JSONArray(indicators));
         return response;
     }
 
-    private JSONObject toJSON(StatisticalIndicator indicator, String language) {
-        final JSONObject json = new JSONObject();
-        JSONHelper.putValue(json, KEY_ID, indicator.getId());
-        JSONHelper.putValue(json, KEY_NAME, indicator.getName(language));
-        return json;
+    private Optional<JSONObject> toJSON(StatisticalIndicator indicator, String language) {
+        if(indicator == null || indicator.getLayers() == null || indicator.getLayers().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            final JSONObject json = new JSONObject();
+            JSONHelper.putValue(json, KEY_ID, indicator.getId());
+            JSONHelper.putValue(json, KEY_NAME, indicator.getName(language));
+            // add layer ids as available regionsets for the indicator
+            JSONHelper.putValue(json, KEY_REGIONSETS, new JSONArray(indicator
+                    .getLayers()
+                    .stream()
+                    .map(StatisticalIndicatorLayer::getOskariLayerId)
+                    .collect(Collectors.toSet())));
+            return Optional.of(json);
+        } catch (NoSuchElementException e) {
+            return Optional.empty();
+        }
     }
 }

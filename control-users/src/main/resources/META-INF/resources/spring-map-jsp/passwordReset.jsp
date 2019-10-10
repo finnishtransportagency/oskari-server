@@ -76,6 +76,11 @@
                                 </c:forEach>
                             </ul>
                         </div>
+                        <c:if test="${not empty username}">
+                            <div class="form-group">
+                                <spring:message code="user.registration.password.new" arguments="${username}" htmlEscape="true" />
+                            </div>
+                        </c:if>
                         <div class="form-group">
                             <input class="form-control input-lg" size="16" id="password" name="password" type="password"
                                    placeholder="<spring:message code="user.password" htmlEscape="true"/>"
@@ -135,7 +140,7 @@
 
             var uuid = '${uuid}';
             jQuery.ajax({
-                url: "/action?action_route=UserPasswordReset",
+                url: "/action?action_route=UserPasswordReset&_csrf=${_csrf.token}",
                 type: 'PUT',
                 contentType: "application/json; charset=UTF-8",
                 data: JSON.stringify({

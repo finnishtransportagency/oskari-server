@@ -9,12 +9,14 @@ import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.layer.formatters.LayerJSONFormatter;
 import fi.nls.oskari.map.layer.formatters.LayerJSONFormatterWMS;
+import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.oskari.permissions.PermissionService;
 import org.oskari.service.util.ServiceFactory;
 
 import javax.servlet.http.HttpServletRequest;
@@ -48,7 +50,7 @@ public class GetLayerTileHandler extends ActionHandler {
      *  Init method
      */
     public void init() {
-        permissionHelper = new PermissionHelper(ServiceFactory.getMapLayerService(),ServiceFactory.getPermissionsService());
+        permissionHelper = new PermissionHelper(ServiceFactory.getMapLayerService(), OskariComponentManager.getComponentOfType(PermissionService.class));
     }
 
     /**
@@ -60,7 +62,7 @@ public class GetLayerTileHandler extends ActionHandler {
             throws ActionException {
 
         // Resolve layer
-        final String layerId = params.getRequiredParam(KEY_ID);
+        final int layerId = params.getRequiredParamInt(KEY_ID);
         final OskariLayer layer = permissionHelper.getLayer(layerId, params.getUser());
 
         final MetricRegistry metrics = ActionControl.getMetrics();
