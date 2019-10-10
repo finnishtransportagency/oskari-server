@@ -22,10 +22,9 @@ import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
 import fi.nls.oskari.util.ResponseHelper;
 import fi.nls.oskari.util.IOHelper;
-import fi.nls.oskari.util.PropertyUtil;
 import java.net.HttpURLConnection;
 
 /**
@@ -50,9 +49,6 @@ public class GetFeatureForCropping extends ActionHandler {
 
 	private OskariLayerService mapLayerService;
 
-	private String croppingUsername;
-	private String croppingPassword;
-
 	@Override
 	public void handleAction(final ActionParameters params) throws ActionException {
 		final int id = params.getRequiredParamInt(PARAM_ID);
@@ -68,13 +64,10 @@ public class GetFeatureForCropping extends ActionHandler {
 					params.getHttpParam(PARAM_HEIGHT), params.getHttpParam(PARAM_X), params.getHttpParam(PARAM_Y),
 					params.getHttpParam(PARAM_LAYERS));
 
-		LOGGER.debug("Details of the data cropping feature");
+			LOGGER.debug("Details of the data cropping feature");
 			try {
 
-				HttpURLConnection con = IOHelper.getConnection(wmsUrl);
-				if(hasAuthorization()){
-					IOHelper.setupBasicAuth(con,croppingUsername, croppingPassword);
-				}
+				HttpURLConnection con = IOHelper.getConnection(wmsUrl, oskariLayer.getUsername(), oskariLayer.getPassword());
 				con.setRequestProperty("Accept-Charset", "UTF-8");
 				final String data = IOHelper.readString(con, "UTF-8");
 
@@ -91,17 +84,11 @@ public class GetFeatureForCropping extends ActionHandler {
 			}
 
 	}
-	
-	private boolean hasAuthorization(){
-		return croppingUsername != null && croppingPassword != null;
-	}
 
 	@Override
 	public void init() {
 		super.init();
 
-		mapLayerService = new OskariLayerServiceIbatisImpl();
-		croppingUsername = PropertyUtil.get("oskari.wfs.cropping.username");
-		croppingPassword = PropertyUtil.get("oskari.wfs.cropping.password");
+		mapLayerService = new OskariLayerServiceMybatisImpl();
 	}
 }
