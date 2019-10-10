@@ -1,0 +1,163 @@
+$toggleSize: 46px;
+$lightBgColor: rgba(255,255,255,0.9);
+$darkBgColor: rgba(20,20,20,0.8);
+$darkIcon: url("../images/world_dark.svg");
+$lightIcon: url("../images/world_light.svg");
+
+div.mapplugin.indexmap {
+    text-align: left;
+
+    .olControlOverviewMapElement {
+        /* Hide by default, control's maximize: false doesn't seem to do anything */
+        display: none;
+        background-color: #FFFFFF;
+        border-color: #D0D0D0;
+        border-left-width: 2px;
+        border-style: solid;
+        border-top-width: 2px;
+        padding: 5px;
+        margin-left: $toggleSize;
+        margin-right: 0;
+        margin-bottom: -$toggleSize;
+    }
+
+    div.icon {
+        width: $toggleSize !important;
+        height: $toggleSize !important;
+        background-repeat: no-repeat;
+        background-position: 50%;
+    }
+
+    .indexmapToggle {
+        height: $toggleSize !important;
+        cursor: pointer;
+        overflow: hidden;
+
+        display: inline-block;
+        position: relative;
+        border-radius: 50%;
+
+        /* default and rounded-dark theme */
+        &.toolstyle-default, &.toolstyle-rounded-dark {
+            background-color: $darkBgColor;
+        
+            div.icon {
+                background-image: $darkIcon;
+            }
+        }
+        
+        /* rounded-light theme */
+        &.toolstyle-rounded-light {
+            background-color: $lightBgColor;
+        
+            div.icon {
+                background-image: $lightIcon;
+            }
+        }
+        
+        /* sharp-dark theme */
+        &.toolstyle-sharp-dark {
+            border-radius: 0;
+            background-color: $darkBgColor;
+        
+            div.icon {
+                background-image: $darkIcon;
+            }
+        }
+        
+        /* sharp-light theme */
+        &.toolstyle-sharp-light {
+            border-radius: 0;
+            background-color: $lightBgColor;
+        
+            div.icon {
+                background-image: $lightIcon;
+            }
+        }
+        
+        /* 3d-dark theme */
+        &.toolstyle-3d-dark {
+            border-radius: 5px;
+            background-color: $darkBgColor;
+            background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#5A5C5D), to(#3B3A3A), color-stop(.8,#4c4a4d));
+            background: -o-gradient(linear, 0% 0%, 0% 100%, from(#5A5C5D), to(#3B3A3A), color-stop(.8,#4c4a4d));
+            background: -moz-gradient(linear, 0% 0%, 0% 100%, from(#5A5C5D), to(#3B3A3A), color-stop(.8,#4c4a4d));
+            background: gradient(linear, 0% 0%, 0% 100%, from(#5A5C5D), to(#3B3A3A), color-stop(.8,#4c4a4d));
+        
+            div.icon {
+                background-image: $darkIcon;
+            }
+        }
+        /* 3d-light theme */
+        &.toolstyle-3d-light {
+            border-radius: 5px;
+            background-color: $lightBgColor;
+            background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(#FAFCFB), to(#DADBDC), color-stop(.8,#DBDBDB));
+            background: -o-gradient(linear, 0% 0%, 0% 100%, from(#FAFCFB), to(#DADBDC), color-stop(.8,#DBDBDB));
+            background: -moz-gradient(linear, 0% 0%, 0% 100%, from(#FAFCFB), to(#DADBDC), color-stop(.8,#DBDBDB));
+            background: gradient(linear, 0% 0%, 0% 100%, from(#FAFCFB), to(#DADBDC), color-stop(.8,#DBDBDB));
+        
+            div.icon {
+                background-image: $lightIcon;
+            }
+        }
+    }
+
+    .mapplugin.ol_indexmap {
+        width: 150px !important;
+        height:150px !important;
+        display: inline;}
+}
+
+.right {
+    div.mapplugin.indexmap {
+        text-align: right;
+
+        .olControlOverviewMapElement {
+            margin-left: 0;
+            margin-right: $toggleSize;
+        }
+
+    }
+
+}
+
+/**
+  ol3 specific
+ */
+.ol-overviewmap .ol-overviewmap-map {
+    border: 1px solid #3c3c3c;
+    height: 150px;
+    margin: -1px;
+    width: 150px;;
+}
+.ol-overviewmap .ol-overviewmap-map, .ol-overviewmap button {
+    display: inline-block;
+}
+.ol-overviewmap:not(.ol-collapsed) {
+    background: rgba(255,255,255,.8);
+    width: 150px;
+    height: 150px;
+}
+
+.ol-overviewmap.ol-unselectable.ol-control:not(.ol-collapsed) {
+  width: 150px;
+  height: 150px;;
+}
+
+.ol-overviewmap {
+    /*
+    left: -8em;
+    bottom: .5em;
+    ;*/
+    margin-top: 10px;
+}
+.ol-overviewmap.ol-collapsed .ol-overviewmap-map, .ol-overviewmap.ol-uncollapsible button {
+    display: none;
+}
+.ol-overviewmap button {
+    display: none;
+}
+.ol-overviewmap-box {
+    border: 2px dotted rgba(0,60,136,.7);
+}

@@ -1,0 +1,4 @@
+JSChannel.js from https://github.com/yochannah/jschannel.git
+Latest commit: f2bcb860911d36ccbc3fabd4a09f7074dd9f289e
+
+This is the same one that rpc-client uses (as of version 1.2.0): https://github.com/nls-oskari/rpc-client

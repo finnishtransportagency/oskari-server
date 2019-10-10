@@ -1,0 +1,481 @@
+/* Variables */
+/* Mixins */
+/* Resets */
+html, body, div, span, object, iframe, h1, h2, h3, h4, h5, h6,
+p, blockquote, pre, a, abbr, address, cite, code, del, dfn, em,
+img, ins, kbd, q, samp, small, strong, sub, sup, var, b, i, hr,
+dl, dt, dd, ol, ul, li, fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, figure, figcaption, hgroup,
+menu, footer, header, nav, section, summary, time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+article, aside, canvas, figure, figure img, figcaption, hgroup,
+footer, header, nav, section, audio, video {
+  display: block;
+}
+
+a img {
+  border: 0;
+}
+
+html, body {
+  height: 100% !important;
+}
+
+html {
+  font-size: 100%;
+  -webkit-overflow-scrolling: touch;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  color: #3c3c3c;
+  font-family: 'Open Sans', Arial, sans-serif;
+  background: #fafafa;
+}
+
+body, button, input, select, textarea {
+  font-size: 14px;
+  line-height: 21px;
+}
+
+em {
+  font-style: italic;
+}
+
+strong {
+  font-weight: bold;
+}
+
+/* Links */
+a {
+  color: #0091ff;
+}
+a:focus {
+  outline: none;
+}
+
+#content a:hover {
+  color: #ff9100;
+}
+
+/* Selection colours */
+::selection {
+  background: #ffd400;
+}
+
+::-moz-selection {
+  background: #ffd400;
+}
+
+img::selection {
+  background: transparent;
+}
+
+img::-moz-selection {
+  background: transparent;
+}
+
+/* Content is only in the portal version afaik so this could be moved there? */
+#content {
+  width: 760px;
+  padding-left: 20px;
+}
+
+/* Portal version */
+.mml-map #logo.no-hover {
+  display: block !important;
+}
+.mml-map #logo.no-hover p {
+  display: none;
+}
+.mml-map #logo.no-hover #logo-only {
+  float: right;
+  margin: 0 5px 0 0;
+}
+.mml-map #sidebar.hover .sign-in, .mml-map #sidebar.hover section {
+  display: block;
+}
+.mml-map #sidebar .sign-in, .mml-map #sidebar section {
+  display: none;
+}
+.mml-map #content {
+  padding-left: 0;
+  width: 100%;
+  margin-left: 0;
+}
+
+
+.oskariui-left {
+  float: left;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 36px;
+  padding-bottom: 20px;
+}
+h1.front-title {
+  font-size: 48px;
+  line-height: 57.6px;
+  padding-bottom: 28px;
+}
+h1.front-title a {
+  color: #ffdc00;
+  text-decoration: underline;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+h1.front-title a:hover {
+  color: #feef92;
+}
+
+h2 {
+  font-size: 24px;
+  line-height: 28.8px;
+  font-weight: lighter;
+  padding-bottom: 15px;
+}
+
+h3 {
+  font-size: 18px;
+  line-height: 21.6px;
+  font-weight: lighter;
+  padding-bottom: 15px;
+}
+h3.inverted {
+  font-weight: normal;
+  color: white;
+}
+
+h4 {
+  font-size: 15px;
+  line-height: 22px;
+  padding-bottom: 17px;
+}
+
+h5 {
+  font-size: 11px;
+  line-height: 42px;
+  text-transform: uppercase;
+  padding-bottom: 10px;
+}
+
+.textcontainer .blue {
+  border-top-color: #0091ff;
+  background-color: #cce9ff;
+}
+.textcontainer .green {
+  border-top-color: #4bd28d;
+  background-color: #dbf6e8;
+}
+.textcontainer .orange {
+  border-top-color: #ff9900;
+  background-color: #ffebcc;
+}
+.textcontainer p, .textcontainer ul, .textcontainer ol, .textcontainer ul {
+  font-size: 13px;
+  line-height: 18px;
+  padding: 0;
+}
+.textcontainer ol {
+  padding-left: 20px;
+  font-weight: bold;
+}
+.textcontainer ul {
+  list-style: none;
+  margin-left: 0;
+  padding-left: 10px;
+  text-indent: -10px;
+  color: #0091ff;
+}
+.textcontainer ul a {
+  color: #3c3c3c;
+  text-decoration: none;
+}
+.textcontainer ul li:before {
+  content: "\00BB\0020";
+}
+
+
+table {
+  /* Cells should have 10px of vertical padding so we reach 28px in total */
+  font-size: 12px;
+  line-height: 18px;
+  margin: 0 0 20px 0;
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid #3c3c3c;
+}
+table.table-simple, table.mmlTable {
+  border-top: 0px;
+  text-align: left;
+  vertical-align: text-top;
+}
+table.table-simple tr th, table.mmlTable tr th {
+  border-top: 0p;
+  border-bottom: 1px solid;
+  text-align: left;
+  vertical-align: text-top;
+}
+table.table-simple tr td, table.mmlTable tr td {
+  text-align: left;
+  vertical-align: text-top;
+}
+table a {
+  text-decoration: none;
+}
+table td {
+  padding: 8px 0 7px 0;
+  text-align: center;
+  border-bottom: 1px solid #e6e6e6;
+}
+table th, table thead td {
+  font-weight: bold;
+}
+table tr:last-child td {
+  border-bottom: none;
+}
+table tr td:first-child {
+  text-align: left;
+}
+
+
+.grid-1, .grid-2, .grid-3, .grid-4, .grid-5, .grid-6 {
+  margin: 10px;
+}
+
+.grid-1 {
+  width: 100px;
+}
+
+.grid-2 {
+  width: 220px;
+}
+
+.grid-4 {
+  width: 460px;
+}
+
+.grid-6 {
+  width: 720px;
+}
+
+.first-column {
+  margin-left: 0;
+}
+
+.last-column {
+  margin-right: 0;
+}
+
+.code-block {
+  margin: 10px 0;
+  border: 1px solid #e6e6e6;
+}
+
+.code-header, .code-content {
+  padding: 20px;
+  line-height: 22px;
+}
+
+.code-header {
+  background-color: #fff7d3;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+/* Forms */
+/* Used in the Oskari side as well */
+.button {
+  display: inline-block;
+  vertical-align: baseline;
+  margin: 0 2px;
+  outline: none;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  font: 12px/100% Arial, sans-serif;
+  font-weight: bold;
+  padding: 8px 30px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  background-clip: padding-box;
+}
+.button:hover {
+  text-decoration: none;
+}
+.button:active {
+  position: relative;
+  top: 1px;
+}
+
+.whitebutton {
+  color: #454545;
+  border: solid 1px #b7b7b7;
+  text-shadow: -1px -1px 1px white;
+  background: #fefefe;
+  background: -webkit-gradient(linear, left top, left bottom, from(#fefefe), to(#e3e3e3));
+  background: -moz-linear-gradient(top, #fefefe, #e3e3e3);
+  background: -ms-linear-gradient(top, #fefefe, #e3e3e3);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fefefe', endColorstr='#e3e3e3');
+  background: linear-gradient(top, #fefefe, #e3e3e3);
+}
+.whitebutton:hover {
+  color: #454545;
+  background: #fff;
+  background: -webkit-gradient(linear, left top, left bottom, from(#fefefe), to(#d9d9d9));
+  background: -moz-linear-gradient(top, #fefefe, #d9d9d9);
+  background: -ms-linear-gradient(top, #fefefe, #d9d9d9);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fefefe', endColorstr='#d9d9d9');
+  background: linear-gradient(top, #fefefe, #d9d9d9);
+}
+.whitebutton:active {
+  color: #999;
+  background: -webkit-gradient(linear, left top, left bottom, from(#ededed), to(#fefefe));
+  background: -moz-linear-gradient(top, #ededed, #fefefe);
+  background: -ms-linear-gradient(top, #ededed, #fefefe);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#ededed', endColorstr='#fefefe');
+  background: linear-gradient(top, #ededed, #fefefe);
+  text-shadow: none;
+}
+
+.bluebutton {
+  color: #fff;
+  border: solid 1px #2670b5;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+  background: #3996ed;
+  background: -webkit-gradient(linear, left top, left bottom, from(#3a97ee), to(#217ad4));
+  background: -moz-linear-gradient(top, #3a97ee, #217ad4);
+  background: -ms-linear-gradient(top, #3a97ee, #217ad4);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#3a97ee', endColorstr='#217ad4');
+  background: linear-gradient(top, #3a97ee, #217ad4);
+}
+.bluebutton:hover {
+  color: #fff;
+  background: -webkit-gradient(linear, left top, left bottom, from(#59abf8), to(#2b8df0));
+  background: -moz-linear-gradient(top, #59abf8, #2b8df0);
+  background: -ms-linear-gradient(top, #59abf8, #2b8df0);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#59abf8', endColorstr='#2b8df0');
+  background: linear-gradient(top, #59abf8, #2b8df0);
+}
+.bluebutton:active {
+  color: #19456d;
+  text-shadow: none;
+  background: -webkit-gradient(linear, left top, left bottom, from(#217ad4), to(#3a97ee));
+  background: -moz-linear-gradient(top, #217ad4, #3a97ee);
+  background: -ms-linear-gradient(top, #217ad4, #3a97ee);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#217ad4', endColorstr='#3a97ee');
+  background: linear-gradient(top, #217ad4, #3a97ee);
+}
+
+input[type=email], input[type=number], input[type=tel], input[type=text], input[type=password], input[type=search], input[type=url] {
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  background-clip: padding-box;
+  border: solid 1px #b7b7b7;
+  -webkit-box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+  -moz-box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+textarea {
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  -o-border-radius: 4px;
+  -ms-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-background-clip: padding-box;
+  -moz-background-clip: padding-box;
+  background-clip: padding-box;
+  border: solid 1px #b7b7b7;
+  -webkit-box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+  -moz-box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 3px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.clearbutton {
+  position: relative;
+  top: 4px;
+  margin-left: -30px;
+  margin-right: 25px;
+  z-index: 99;
+}
+
+select {
+  width: 206px;
+  color: #3c3c3c;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  background-clip: padding-box;
+  border: solid 1px #b7b7b7;
+  background: #fefefe;
+  background: -webkit-gradient(linear, left top, left bottom, from(#fefefe), to(#e3e3e3));
+  background: -moz-linear-gradient(top, #fefefe, #e3e3e3);
+  background: -ms-linear-gradient(top, #fefefe, #e3e3e3);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#fefefe', endColorstr='#e3e3e3');
+  background: linear-gradient(top, #fefefe, #e3e3e3);
+}
+
+/* Common helper classes */
+.floatleft {
+  float: left;
+}
+
+.floatright {
+  float: right;
+}
+
+.alignleft {
+  text-align: left;
+}
+
+.alignright {
+  text-align: right;
+}
+
+.aligncenter {
+  text-align: center;
+}
+
+.nopadding {
+  padding: 0;
+}
+
+.nomargin {
+  margin: 0;
+}
+
+/* Contain floats: nicola"sgallagher.com/micro-clearfix-hack/ */
+.clearfix {
+  zoom: 1;
+}
+.clearfix:before, .clearfix:after {
+  content: "";
+  display: table;
+}
+.clearfix:after {
+  clear: both;
+}
+
+#maptools {
+  width: 170px !important;
+  height: 100% !important;
+  overflow: auto;
+  position: fixed !important;
+}
+
+.disable-select {
+  -webkit-user-select: none;  
+  -moz-user-select: none;    
+  -ms-user-select: none;      
+  user-select: none;
+}
