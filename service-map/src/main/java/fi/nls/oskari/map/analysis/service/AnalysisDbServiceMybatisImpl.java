@@ -1,6 +1,9 @@
 package fi.nls.oskari.map.analysis.service;
 
+import fi.nls.oskari.cache.Cache;
+import fi.nls.oskari.cache.CacheManager;
 import fi.nls.oskari.db.DatasourceHelper;
+import fi.nls.oskari.domain.map.UserDataStyle;
 import fi.nls.oskari.domain.map.analysis.Analysis;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
@@ -25,6 +28,7 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
     protected static final String DATASOURCE_ANALYSIS = "analysis";
 
     private static final Logger log = LogFactory.getLogger(AnalysisDbServiceMybatisImpl.class);
+    private final Cache<Analysis> cache;
 
     private SqlSessionFactory factory = null;
 
@@ -41,6 +45,7 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
         else {
             log.error("Couldn't get datasource for analysisservice");
         }
+        cache = CacheManager.getCache(getClass().getName());
     }
 
     private SqlSessionFactory initializeMyBatis(final DataSource dataSource) {
@@ -49,12 +54,24 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
 
         final Configuration configuration = new Configuration(environment);
         configuration.getTypeAliasRegistry().registerAlias(Analysis.class);
+        configuration.getTypeAliasRegistry().registerAlias(UserDataStyle.class);
         configuration.setLazyLoadingEnabled(true);
         configuration.addMapper(AnalysisMapper.class);
 
         return new SqlSessionFactoryBuilder().build(configuration);
     }
 
+
+    private Analysis getFromCache(long id) {
+        return cache.get(Long.toString(id));
+    }
+
+    private Analysis cache(Analysis layer) {
+        if (layer != null) {
+            cache.put(Long.toString(layer.getId()), layer);
+        }
+        return layer;
+    }
 
     /**
      * insert Analysis table row
@@ -105,6 +122,10 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
      * @return analysis object
      */
     public Analysis getAnalysisById(long id) {
+        Analysis layer = getFromCache(id);
+        if (layer != null) {
+            return layer;
+        }
         try (SqlSession session = factory.openSession()) {
             log.debug("Finding analysis by id:", id);
             AnalysisMapper mapper = session.getMapper(AnalysisMapper.class);
@@ -114,7 +135,7 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
                 return null;
             }
             log.debug("Found analysis: ", analysis);
-            return analysis;
+            return cache(analysis);
         }
     }
 
@@ -212,7 +233,6 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
             throw new ServiceException("Tried to delete analysis with <null> param");
         }
         final SqlSession session = factory.openSession();
-        List<Analysis> analysisList = null;
         try {
             log.debug("Deleting analysis: ", analysis);
             //TODO final Resource res = permissionsService.getResource(AnalysisLayer.TYPE, "analysis+" + analysis.getId());
@@ -222,6 +242,7 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
             mapper.deleteAnalysisDataById(analysis.getId());
             mapper.deleteAnalysisStyleById(analysis.getStyle_id());
             session.commit();
+            cache.remove(Long.toString(analysis.getId()));
         } catch (Exception e) {
             session.rollback();
             log.warn(e, "Exception when trying delete analysis by id: ", analysis);
@@ -235,7 +256,6 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
             throw new ServiceException("Tried to merge analysis with <null> param");
         }
         final SqlSession session = factory.openSession();
-        List<Analysis> analysisList = null;
         if (ids.size() > 1) {
             try {
                 log.debug("Merging analysis: ", analysis);
@@ -250,6 +270,7 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
                     Analysis analysis_old = mapper.getAnalysisById(id);
                     mapper.deleteAnalysisById(id);
                     mapper.deleteAnalysisStyleById(analysis_old.getStyle_id());
+                    cache.remove(Long.toString(analysis_old.getId()));
                 }
                 session.commit();
             } catch (Exception e) {
@@ -278,6 +299,11 @@ public class AnalysisDbServiceMybatisImpl implements AnalysisDbService {
             params.put("id", id);
             mapper.updatePublisherName(params);
             session.commit();
+            // update data in cache
+            Analysis layer = getFromCache(id);
+            if (layer != null) {
+                layer.setPublisher_name(name);
+            }
         } catch (Exception e) {
             log.warn(e, "Failed to update publisher name");
         } finally {

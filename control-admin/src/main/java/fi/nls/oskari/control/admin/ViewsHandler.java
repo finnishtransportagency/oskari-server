@@ -12,6 +12,7 @@ import fi.nls.oskari.map.view.*;
 import fi.nls.oskari.map.view.util.ViewHelper;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.ResponseHelper;
+import org.oskari.log.AuditLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -30,7 +31,7 @@ public class ViewsHandler extends RestActionHandler {
     private final ViewService viewService;
 
     public ViewsHandler() {
-        this(new BundleServiceIbatisImpl(), new ViewServiceIbatisImpl());
+        this(new BundleServiceMybatisImpl(), new AppSetupServiceMybatisImpl());
     }
 
     public ViewsHandler(BundleService bundleService, ViewService viewService) {
@@ -40,9 +41,7 @@ public class ViewsHandler extends RestActionHandler {
 
     @Override
     public void preProcess(ActionParameters params) throws ActionDeniedException {
-        if (!params.getUser().isAdmin()) {
-            throw new ActionDeniedException("Admin only");
-        }
+        params.requireAdminUser();
     }
 
     @Override
@@ -74,6 +73,9 @@ public class ViewsHandler extends RestActionHandler {
         try {
             View view = parseView(req);
             viewService.addView(view);
+            AuditLog.user(params.getClientIp(), params.getUser())
+                    .withParam("id", view.getId())
+                    .added(AuditLog.ResourceType.SYSTEM_VIEW);
             JSONObject json = createResponse(view);
             ResponseHelper.writeResponse(params, HttpServletResponse.SC_CREATED, json);
         } catch (ViewException e) {

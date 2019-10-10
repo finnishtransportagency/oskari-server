@@ -81,7 +81,6 @@ public class FlywayHelper {
                     b.setViewId(viewId);
                     b.setName(bundle);
                     b.setBundleId(rs.getLong("bundle_id"));
-                    b.setStartup(rs.getString("startup"));
                     b.setConfig(rs.getString("config"));
                     b.setState(rs.getString("state"));
                     b.setSeqNo(rs.getInt("seqno"));
@@ -96,7 +95,6 @@ public class FlywayHelper {
     public static Bundle updateBundleInView(Connection connection, Bundle bundle, Long viewId)
             throws SQLException {
         final String sql = "UPDATE portti_view_bundle_seq SET " +
-                "startup=?, " +
                 "config=?, " +
                 "state=?, " +
                 "seqno=?, " +
@@ -106,13 +104,12 @@ public class FlywayHelper {
 
         try (final PreparedStatement statement =
                      connection.prepareStatement(sql)) {
-            statement.setString(1, bundle.getStartup());
-            statement.setString(2, bundle.getConfig());
-            statement.setString(3, bundle.getState());
-            statement.setInt(4, bundle.getSeqNo());
-            statement.setString(5, bundle.getBundleinstance());
-            statement.setLong(6, bundle.getBundleId());
-            statement.setLong(7, viewId);
+            statement.setString(1, bundle.getConfig());
+            statement.setString(2, bundle.getState());
+            statement.setInt(3, bundle.getSeqNo());
+            statement.setString(4, bundle.getBundleinstance());
+            statement.setLong(5, bundle.getBundleId());
+            statement.setLong(6, viewId);
             statement.execute();
         }
         return null;
@@ -121,14 +118,13 @@ public class FlywayHelper {
     public static void addBundleWithDefaults(Connection connection, Long viewId, String bundleid)
             throws SQLException {
         final String sql ="INSERT INTO portti_view_bundle_seq" +
-                "(view_id, bundle_id, seqno, config, state, startup, bundleinstance) " +
+                "(view_id, bundle_id, seqno, config, state, bundleinstance) " +
                 "VALUES (" +
                 "?, " +
                 "(SELECT id FROM portti_bundle WHERE name=?), " +
                 "(SELECT max(seqno)+1 FROM portti_view_bundle_seq WHERE view_id=?), " +
                 "(SELECT config FROM portti_bundle WHERE name=?), " +
                 "(SELECT state FROM portti_bundle WHERE name=?),  " +
-                "(SELECT startup FROM portti_bundle WHERE name=?), " +
                 "?)";
         try(final PreparedStatement statement =
                     connection.prepareStatement(sql)) {
@@ -138,7 +134,18 @@ public class FlywayHelper {
             statement.setString(4, bundleid);
             statement.setString(5, bundleid);
             statement.setString(6, bundleid);
-            statement.setString(7, bundleid);
+            statement.execute();
+        }
+    }
+    
+    public static void removeBundleFromView(Connection connection, String bundleName, Long viewId)
+            throws SQLException {
+        final String sql ="DELETE FROM portti_view_bundle_seq " +
+                "WHERE bundle_id = (SELECT id FROM portti_bundle WHERE name=?) AND view_id=?";
+        try(final PreparedStatement statement =
+                    connection.prepareStatement(sql)) {
+            statement.setString(1, bundleName);
+            statement.setLong(2, viewId);
             statement.execute();
         }
     }

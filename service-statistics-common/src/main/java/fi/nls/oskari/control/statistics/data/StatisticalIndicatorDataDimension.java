@@ -48,7 +48,19 @@ public class StatisticalIndicatorDataDimension {
         addAllowedValue(value, null);
     }
     public void addAllowedValue(String value, String label) {
-        allowedValues.add(new IdNamePair(value, label));
+        addAllowedValue(new IdNamePair(value, label));
+    }
+    public void addAllowedValue(IdNamePair pair) {
+        // the values need to be sorted so doing "set-like" functionality here
+        if(!getAllowedValues().stream()
+                .filter(x -> x.getKey().equals(pair.getKey()))
+                .findFirst()
+                .isPresent()) {
+            allowedValues.add(pair);
+        }
+    }
+    public void setAllowedValues(List<IdNamePair> values) {
+        allowedValues = values;
     }
 
     public String getName() {

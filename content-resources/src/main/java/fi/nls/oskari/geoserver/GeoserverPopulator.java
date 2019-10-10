@@ -2,10 +2,12 @@ package fi.nls.oskari.geoserver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.vividsolutions.jts.geom.Coordinate;
 import feign.Feign;
 import feign.auth.BasicAuthRequestInterceptor;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
+import fi.nls.oskari.db.DatasourceHelper;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.domain.map.wfs.WFSLayerConfiguration;
 import fi.nls.oskari.log.LogFactory;
@@ -15,6 +17,9 @@ import fi.nls.oskari.util.OskariRuntimeException;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.wfs.WFSLayerConfigurationService;
 import fi.nls.oskari.wfs.WFSLayerConfigurationServiceIbatisImpl;
+import org.geotools.referencing.CRS;
+import org.opengis.geometry.Envelope;
+import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 /**
  * Created by SMAKINEN on 1.9.2015.
@@ -33,25 +38,31 @@ public class GeoserverPopulator {
     public static void setupAll(final String srs)
             throws Exception {
 
-        try{
-            MyplacesHelper.setupMyplaces(srs);
-        }catch(Exception e){
-            LOG.error(e, "Error when setting my places");
-            LOG.debug(e.getMessage());
+        if (DatasourceHelper.isModuleEnabled("myplaces")) {
+            try {
+                MyplacesHelper.setupMyplaces(srs);
+            } catch(Exception e){
+                LOG.error(e, "Error when setting my places");
+                LOG.debug(e.getMessage());
+            }
         }
 
-        try{
-            AnalysisHelper.setupAnalysis(srs);
-        }catch(Exception e){
-            LOG.error(e, "Error when setting analysis");
-            LOG.debug(e.getMessage());
+        if (DatasourceHelper.isModuleEnabled("analysis")) {
+            try {
+                AnalysisHelper.setupAnalysis(srs);
+            } catch(Exception e){
+                LOG.error(e, "Error when setting analysis");
+                LOG.debug(e.getMessage());
+            }
         }
 
-        try{
-            UserlayerHelper.setupUserlayers(srs);
-        }catch(Exception e){
-            LOG.error(e, "Error when setting user layers");
-            LOG.debug(e.getMessage());
+        if (DatasourceHelper.isModuleEnabled("userlayer")) {
+            try {
+                UserlayerHelper.setupUserlayers(srs);
+            } catch(Exception e){
+                LOG.error(e, "Error when setting user layers");
+                LOG.debug(e.getMessage());
+            }
         }
     }
 
@@ -105,6 +116,7 @@ public class GeoserverPopulator {
             baseLayer.setType(OskariLayer.TYPE_WFS);
             baseLayer.setVersion("1.1.0");
             baseLayer.setName(name);
+            baseLayer.setInternal(true);
             baseLayer.setLocale(JSONHelper.createJSONObject("{ fi:{name:\"Omat paikat\"},sv:{name:\"My places\"},en:{name:\"My places\"}}"));
             baseLayer.setOpacity(50);
         }
@@ -122,7 +134,8 @@ public class GeoserverPopulator {
         // setup WFS conf with defaults
         WFSLayerConfiguration conf = LayerHelper.getConfig(baseLayer, NAMESPACE);
         conf.setFeatureElement("my_places");
-        conf.setFeatureParamsLocales("{\"default\": [\"name\", \"place_desc\",\"link\", \"image_url\"],\"fi\": [\"name\", \"place_desc\",\"link\", \"image_url\"]}");
+        conf.setSelectedFeatureParams("{\"default\": [\"name\", \"place_desc\",\"link\", \"image_url\"],\"fi\": [\"name\", \"place_desc\",\"link\", \"image_url\"]}");
+        conf.setFeatureParamsLocales("{\"default\": [\"name\", \"description\",\"link\", \"image\"],\"fi\": [\"nimi\", \"kuvaus\",\"linkki\", \"kuva-linkki\"]}");
         WFS_SERVICE.insert(conf);
         return baseLayer.getId();
     }
@@ -136,6 +149,7 @@ public class GeoserverPopulator {
             baseLayer.setType(OskariLayer.TYPE_WFS);
             baseLayer.setVersion("1.1.0");
             baseLayer.setName(name);
+            baseLayer.setInternal(true);
             baseLayer.setLocale(JSONHelper.createJSONObject("{ fi:{name:\"Analyysitaso\"},sv:{name:\"Analys\"},en:{name:\"Analyse\"}}"));
             baseLayer.setOpacity(50);
         }
@@ -167,6 +181,7 @@ public class GeoserverPopulator {
             baseLayer.setType(OskariLayer.TYPE_WFS);
             baseLayer.setVersion("1.1.0");
             baseLayer.setName(name);
+            baseLayer.setInternal(true);
             baseLayer.setLocale(JSONHelper.createJSONObject("{ fi:{name:\"Omat aineistot\"},sv:{name:\"User layers\"},en:{name:\"User layers\"}}"));
             baseLayer.setOpacity(80);
         }
@@ -188,4 +203,24 @@ public class GeoserverPopulator {
         WFS_SERVICE.insert(conf);
         return baseLayer.getId();
     }
+
+    /**
+     * Calculate and set bounds for FeatureType based on it's CRS
+     * @param featureType
+     */
+    protected static void resolveCRS(FeatureType featureType, String srs) {
+        featureType.srs = srs;
+        featureType.nativeCRS = srs;
+        try {
+            CoordinateReferenceSystem sys = CRS.decode(featureType.srs);
+            Envelope bounds = CRS.getEnvelope(sys);
+            featureType.setBounds(bounds.getLowerCorner().getOrdinate(Coordinate.X),
+                    bounds.getUpperCorner().getOrdinate(Coordinate.X),
+                    bounds.getLowerCorner().getOrdinate(Coordinate.Y),
+                    bounds.getUpperCorner().getOrdinate(Coordinate.Y));
+        } catch (Exception e) {
+            LOG.warn(e, "Unable to setup native bounds for FeatureType:", featureType);
+        }
+    }
+
 }

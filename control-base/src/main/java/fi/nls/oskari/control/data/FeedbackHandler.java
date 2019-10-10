@@ -1,10 +1,7 @@
 package fi.nls.oskari.control.data;
 
 import fi.nls.oskari.annotation.OskariActionRoute;
-import fi.nls.oskari.control.ActionException;
-import fi.nls.oskari.control.ActionHandler;
-import fi.nls.oskari.control.ActionParameters;
-import fi.nls.oskari.control.ActionParamsException;
+import fi.nls.oskari.control.*;
 import fi.nls.oskari.domain.map.view.View;
 import fi.nls.oskari.feedback.FeedbackResponse;
 import fi.nls.oskari.feedback.ServiceParams;
@@ -13,7 +10,7 @@ import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.feedback.FeedbackService;
 import fi.nls.oskari.feedback.open311.FeedbackImpl;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.util.ResponseHelper;
@@ -27,7 +24,7 @@ import static fi.nls.oskari.control.ActionConstants.*;
  * }
  */
 @OskariActionRoute("Feedback")
-public class FeedbackHandler extends ActionHandler {
+public class FeedbackHandler extends RestActionHandler {
 
     static final String API_PARAM_METHOD = "method";
     static final String API_PARAM_SERVICEID = "serviceId";
@@ -45,11 +42,11 @@ public class FeedbackHandler extends ActionHandler {
     public void init() {
         super.init();
         service = new FeedbackImpl();
-        viewService = new ViewServiceIbatisImpl();
+        viewService = new AppSetupServiceMybatisImpl();
     }
 
     @Override
-    public void handleAction(final ActionParameters params)
+    public void handlePost(final ActionParameters params)
             throws ActionException {
 
         //Method switch to to requested action

@@ -5,7 +5,7 @@
     <parent>
         <artifactId>oskari-parent</artifactId>
         <groupId>fi.nls.oskari</groupId>
-        <version>1.46.0</version>
+        <version>1.53.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -20,8 +20,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>

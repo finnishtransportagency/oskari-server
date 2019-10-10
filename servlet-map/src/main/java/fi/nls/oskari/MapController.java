@@ -8,9 +8,9 @@ import fi.nls.oskari.domain.map.view.ViewTypes;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
 import fi.nls.oskari.map.view.util.ViewHelper;
-import fi.nls.oskari.spring.EnvHelper;
+import fi.nls.oskari.spring.SpringEnvHelper;
 import fi.nls.oskari.spring.extension.OskariParam;
 import fi.nls.oskari.util.*;
 import org.json.JSONObject;
@@ -36,7 +36,6 @@ public class MapController {
 
     private final static Logger log = LogFactory.getLogger(MapController.class);
 
-    private final static String PROPERTY_DEVELOPMENT = "development";
     private final static String PROPERTY_VERSION = "oskari.client.version";
     private final static String KEY_PRELOADED = "preloaded";
     private final static String KEY_PATH = "path";
@@ -46,17 +45,14 @@ public class MapController {
 
     private final static String KEY_RESPONSE_HEADER_PREFIX = "oskari.page.header.";
 
-    private final ViewService viewService = new ViewServiceIbatisImpl();
-    private boolean isDevelopmentMode = false;
+    private final ViewService viewService = new AppSetupServiceMybatisImpl();
     private String version = null;
-    private final Set<String> paramHandlers = new HashSet<String>();
+    private final Set<String> paramHandlers = new HashSet<>();
 
     @Autowired
-    private EnvHelper env;
+    private SpringEnvHelper env;
 
     public MapController() {
-        // check if we have development flag -> serve non-minified js
-        isDevelopmentMode = ConversionHelper.getBoolean(PropertyUtil.get(PROPERTY_DEVELOPMENT), false);
         // Get version from properties
         version = PropertyUtil.get(PROPERTY_VERSION);
     }
@@ -69,20 +65,8 @@ public class MapController {
             paramHandlers.addAll(ParamControl.getHandlerKeys());
             log.debug("Checking for params", paramHandlers);
         }
-        // for debugging - Note! changes the setting for the whole instance!!! Use with care
-        if(params.getUser().isAdmin() && params.getHttpParam("reallyseriouslyyes", false)) {
-            isDevelopmentMode = params.getHttpParam("dev", isDevelopmentMode);
-        }
 
         writeCustomHeaders(params.getResponse());
-        model.addAttribute("preloaded", !isDevelopmentMode);
-
-        if (isDevelopmentMode) {
-            model.addAttribute("oskariApplication", PropertyUtil.get("oskari.development.prefix"));
-        } else {
-            model.addAttribute("oskariApplication", PropertyUtil.get("oskari.client.version") +
-                    PropertyUtil.get("oskari.application"));
-        }
 
         // JSP
         final String viewJSP = setupRenderParameters(params, model);
@@ -133,7 +117,7 @@ public class MapController {
                     model.addAttribute("_login_field_user", env.getParam_username());
                     model.addAttribute("_login_field_pass", env.getParam_password());
                 }
-                if(PropertyUtil.getOptional("allow.registration", false)) {
+                if(env.isRegistrationAllowed()) {
                     model.addAttribute("_registration_uri", env.getRegisterUrl());
                 }
             }
@@ -178,7 +162,7 @@ public class MapController {
             final String referer = RequestHelper.getDomainFromReferer(params.getHttpHeader(IOHelper.HEADER_REFERER));
             final String pubDomain = view.getPubDomain();
             if (ViewHelper.isRefererDomain(referer, pubDomain)) {
-                log.info("Granted access to published view in domain:",pubDomain, "for referer", referer);
+                log.info("Granted access to published view in domain:", pubDomain, "for referer", referer);
             } else {
                 log.debug("Referer: ", params.getHttpHeader(IOHelper.HEADER_REFERER), " -> ", referer);
                 log.warn("Denied access to published view in domain:", pubDomain, "for referer", referer);
@@ -187,9 +171,14 @@ public class MapController {
             }
         }
 
+
         log.debug("Serving view with id:", view.getId());
         log.debug("View:", view.getDevelopmentPath(), "/", view.getApplication(), "/", view.getPage());
         model.addAttribute("viewId", view.getId());
+        model.addAttribute("appsetupId", view.getId());
+        model.addAttribute("appsetupUUID", view.getUuid());
+        model.addAttribute("appsetupType", view.getType());
+        model.addAttribute("appsetupName", view.getName());
 
         // viewJSP might change if using dev override
         String viewJSP = view.getPage();
@@ -198,44 +187,36 @@ public class MapController {
         // construct control params
         final JSONObject controlParams = getControlParams(params);
 
-        if(uuId != null){
+        if (uuId != null) {
             JSONHelper.putValue(controlParams, PARAM_UUID, view.getUuid());
-        }else{
+        } else {
             JSONHelper.putValue(controlParams, PARAM_VIEW_ID, view.getId());
         }
 
 
         JSONHelper.putValue(controlParams, PARAM_SECURE, request.getParameter(PARAM_SECURE));
+        // pass language as control param so we don't have to rely on cookie for getting the same language for GetAppSetup
+        JSONHelper.putValue(controlParams, PARAM_LANGUAGE, params.getLocale().getLanguage());
         JSONHelper.putValue(controlParams, GetAppSetupHandler.PARAM_NO_SAVED_STATE, request.getParameter(GetAppSetupHandler.PARAM_NO_SAVED_STATE));
         model.addAttribute(KEY_CONTROL_PARAMS, controlParams.toString());
 
-        model.addAttribute(KEY_PRELOADED, !isDevelopmentMode);
-        if (isDevelopmentMode) {
-            model.addAttribute(KEY_PATH, view.getDevelopmentPath() + "/" + view.getApplication());
-        } else {
-            model.addAttribute(KEY_PATH, "/" + version + "/" + view.getApplication());
-        }
+        // compatibility for <1.49 JSPs -> there was an if statement to use minified or non-minified code
+        model.addAttribute(KEY_PRELOADED, true);
+
+        // for figuring out paths for frontend files
+        model.addAttribute("version", version);
+        model.addAttribute(KEY_PATH, "/" + version + "/" + view.getApplication());
         model.addAttribute("application", view.getApplication());
+
+        // title of the page
         model.addAttribute("viewName", view.getName());
+        
         model.addAttribute("user", params.getUser());
         model.addAttribute("language", params.getLocale().getLanguage());
 
         model.addAttribute(KEY_AJAX_URL,
                 PropertyUtil.get(params.getLocale(), GetAppSetupHandler.PROPERTY_AJAXURL));
         model.addAttribute("urlPrefix", "");
-
-        // in dev-mode app/page can be overridden
-        if (isDevelopmentMode) {
-            // check if we want to override the page & app
-            final String app = params.getHttpParam("app");
-            final String page = params.getHttpParam("page");
-            if (page != null && app != null) {
-                log.debug("Using dev-override!!! \nUsing JSP:", page, "with application:", app);
-                model.addAttribute(KEY_PATH, app);
-                model.addAttribute("application", app);
-                viewJSP = page;
-            }
-        }
 
         // return jsp for the requested view
         return viewJSP;

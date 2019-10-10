@@ -118,7 +118,7 @@ public class PropertyUtil {
             if(detailMessage != null) {
                 msg = msg + ". Message: " + detailMessage;
             }
-            throw new RuntimeException(msg);
+            throw new NoSuchElementException(msg);
         }
         return prop;
     }
@@ -214,6 +214,27 @@ public class PropertyUtil {
         return getLocalizableProperty(key, null);
     }
 
+    /**
+     * Easier way to find a single localizable property that defaults to default language and to no modifier:
+     *   PropertyUtil.getWithOptionalModifier("auth.register.url", "fi", PropertyUtil.getDefaultLanguage());
+     *   Will try:
+     *   1) auth.register.url.fi
+     *   2) auth.register.url.en
+     *   3) auth.register.url
+     *   And return the first one without null value or null if not found in any of these
+     * @param key
+     * @param modifiers
+     * @return
+     */
+    public static String getWithOptionalModifier(final String key, String... modifiers) {
+        for(String mod: modifiers) {
+            final String value = getOptional(key + "." + mod);
+            if(value != null) {
+                return value;
+            }
+        }
+        return getOptional(key);
+    }
     /**
      *
      * @param key

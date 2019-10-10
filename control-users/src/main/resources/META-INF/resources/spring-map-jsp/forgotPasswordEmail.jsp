@@ -52,6 +52,9 @@
                 <h1><spring:message code="user.registration.passwordReset.title"/></h1>
                 <hr class="colorgraph">
                 <div class="form-group">
+                    <spring:message code="user.registration.passwordReset.info"/>
+                </div>
+                <div class="form-group">
                     <c:choose>
                         <c:when test="${empty email}">
                             <input class="form-control input-lg" size="25" id="email" name="email" type="email"
@@ -111,7 +114,8 @@
             url: "/action?action_route=UserPasswordReset",
             type: 'POST',
             data: {
-                email: email
+                email: email,
+                _csrf: '${_csrf.token}'
             },
             success: function () {
                 inProgress = false;

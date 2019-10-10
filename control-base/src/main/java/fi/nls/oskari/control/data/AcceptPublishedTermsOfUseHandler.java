@@ -2,22 +2,25 @@ package fi.nls.oskari.control.data;
 
 import fi.nls.oskari.annotation.OskariActionRoute;
 import fi.nls.oskari.control.ActionException;
-import fi.nls.oskari.control.ActionHandler;
 import fi.nls.oskari.control.ActionParameters;
+import fi.nls.oskari.control.RestActionHandler;
 import fi.nls.oskari.map.publish.service.PublishTermsOfUseService;
-import fi.nls.oskari.map.publish.service.PublishTermsOfUseServiceIbatisImpl;
+import fi.nls.oskari.map.publish.service.PublishTermsOfUseServiceMybatisImpl;
 import fi.nls.oskari.util.ResponseHelper;
+import org.oskari.log.AuditLog;
 
 @OskariActionRoute("AcceptPublishedTermsOfUse")
-public class AcceptPublishedTermsOfUseHandler  extends ActionHandler {
+public class AcceptPublishedTermsOfUseHandler  extends RestActionHandler {
 
-    private PublishTermsOfUseService service = new PublishTermsOfUseServiceIbatisImpl();
+    private PublishTermsOfUseService service = new PublishTermsOfUseServiceMybatisImpl();
 
     @Override
-    public void handleAction(ActionParameters params) throws ActionException {
+    public void handlePost(ActionParameters params) throws ActionException {
         if(!params.getUser().isGuest()) {
-            final int id = service.setUserAgreed(params.getUser().getId());
-            ResponseHelper.writeResponse(params, id != -1);            
+            ResponseHelper.writeResponse(params, service.setUserAgreed(params.getUser().getId()));
+
+            AuditLog.user(params.getClientIp(), params.getUser())
+                    .updated(AuditLog.ResourceType.TERMS_OF_USE);
         }
         else {
             ResponseHelper.writeResponse(params, false);
