@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
+
 /**
  * WMS GetMap Request (KVP) Builder
  */
@@ -24,6 +26,7 @@ public class GetMapBuilder {
     private List<String> styles = new ArrayList<>();
     private boolean transparent;
     private Color bgColor;
+    private String time;
 
     public GetMapBuilder endPoint(String endPoint) {
         this.endPoint = endPoint;
@@ -87,12 +90,20 @@ public class GetMapBuilder {
         return this;
     }
 
+    public GetMapBuilder time(String time) {
+        this.time = time;
+        return this;
+    }
+
     public GetMapBuilder layer(String layer) {
         return layer(layer, "");
     }
 
     public GetMapBuilder layer(String layer, String style) {
         layers.add(layer);
+        if (style == null) {
+            style = "";
+        }
         styles.add(style);
         return this;
     }
@@ -145,6 +156,10 @@ public class GetMapBuilder {
 
         if (bgColor != null) {
             sb.append("&BGCOLOR=").append(colorToHex(bgColor));
+        }
+
+        if(StringUtils.isNotBlank(time)) {
+            sb.append("&TIME=").append(time);
         }
 
         return sb.toString();

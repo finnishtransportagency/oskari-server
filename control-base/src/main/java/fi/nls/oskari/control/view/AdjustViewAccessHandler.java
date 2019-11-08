@@ -7,16 +7,17 @@ import fi.nls.oskari.domain.map.view.View;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.ResponseHelper;
+import org.oskari.log.AuditLog;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 @OskariActionRoute("AdjustViewAccess")
 public class AdjustViewAccessHandler extends RestActionHandler {
 
-    private ViewService vs = new ViewServiceIbatisImpl();
+    private ViewService vs = new AppSetupServiceMybatisImpl();
     private static final Logger log = LogFactory.getLogger(AdjustViewAccessHandler.class);
 
     @Override
@@ -49,6 +50,13 @@ public class AdjustViewAccessHandler extends RestActionHandler {
                 resp.put("id", view.getId());
                 resp.put("uuid", view.getUuid());
                 resp.put("isPublic", view.isPublic());
+
+                AuditLog.user(params.getClientIp(), params.getUser())
+                        .withParam("uuid", view.getUuid())
+                        .withParam("isPublic", isPublic)
+                        .withMsg("Modified visibility")
+                        .updated(AuditLog.ResourceType.USER_VIEW);
+                
                 ResponseHelper.writeResponse(params, resp);
             } catch (JSONException jsonex) {
                 throw new ActionException("Exception while adjusting view access:" + log.getAsString(view), jsonex);

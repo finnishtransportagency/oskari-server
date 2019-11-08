@@ -22,7 +22,7 @@ import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
 import fi.nls.oskari.util.ResponseHelper;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.PropertyUtil;
@@ -68,10 +68,10 @@ public class GetFeatureForCropping extends ActionHandler {
 					params.getHttpParam(PARAM_HEIGHT), params.getHttpParam(PARAM_X), params.getHttpParam(PARAM_Y),
 					params.getHttpParam(PARAM_LAYERS));
 
-		LOGGER.debug("Details of the data cropping feature");
+			LOGGER.debug("Details of the data cropping feature");
 			try {
 
-				HttpURLConnection con = IOHelper.getConnection(wmsUrl);
+				HttpURLConnection con = IOHelper.getConnection(wmsUrl, oskariLayer.getUsername(), oskariLayer.getPassword());
 				if(hasAuthorization()){
 					IOHelper.setupBasicAuth(con,croppingUsername, croppingPassword);
 				}
@@ -100,7 +100,7 @@ public class GetFeatureForCropping extends ActionHandler {
 	public void init() {
 		super.init();
 
-		mapLayerService = new OskariLayerServiceIbatisImpl();
+		mapLayerService = new OskariLayerServiceMybatisImpl();
 		croppingUsername = PropertyUtil.get("oskari.wfs.cropping.username");
 		croppingPassword = PropertyUtil.get("oskari.wfs.cropping.password");
 	}

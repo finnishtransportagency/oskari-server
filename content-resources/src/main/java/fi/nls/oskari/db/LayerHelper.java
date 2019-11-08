@@ -2,31 +2,28 @@ package fi.nls.oskari.db;
 
 import fi.mml.map.mapwindow.service.db.OskariMapLayerGroupService;
 import fi.mml.map.mapwindow.service.db.OskariMapLayerGroupServiceIbatisImpl;
-import fi.mml.portti.domain.permissions.Permissions;
-import fi.mml.portti.service.db.permissions.PermissionsService;
-import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.nls.oskari.domain.Role;
 import fi.nls.oskari.domain.map.DataProvider;
 import fi.nls.oskari.domain.map.MaplayerGroup;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
-import fi.nls.oskari.map.data.domain.OskariLayerResource;
 import fi.nls.oskari.map.layer.DataProviderService;
-import fi.nls.oskari.map.layer.DataProviderServiceIbatisImpl;
+import fi.nls.oskari.map.layer.DataProviderServiceMybatisImpl;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
 import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLink;
 import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLinkService;
 import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLinkServiceMybatisImpl;
-import fi.nls.oskari.permission.domain.Permission;
-import fi.nls.oskari.permission.domain.Resource;
 import fi.nls.oskari.user.MybatisRoleService;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.oskari.permissions.PermissionService;
+import org.oskari.permissions.PermissionServiceMybatisImpl;
+import org.oskari.permissions.model.*;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -37,8 +34,8 @@ public class LayerHelper {
     private static final Logger log = LogFactory.getLogger(LayerHelper.class);
     private static final OskariMapLayerGroupService groupService = new OskariMapLayerGroupServiceIbatisImpl();
     private static final OskariLayerGroupLinkService linkService = new OskariLayerGroupLinkServiceMybatisImpl();
-    private static final DataProviderService dataProviderService = new DataProviderServiceIbatisImpl();
-    private static final PermissionsService permissionsService = new PermissionsServiceIbatisImpl();
+    private static final DataProviderService dataProviderService = new DataProviderServiceMybatisImpl();
+    private static final PermissionService permissionsService = new PermissionServiceMybatisImpl();
     private static final MybatisRoleService roleService = new MybatisRoleService();
 
     public static int setupLayer(final String layerfile) throws IOException, JSONException {
@@ -46,7 +43,7 @@ public class LayerHelper {
         final JSONObject json = JSONHelper.createJSONObject(jsonStr);
         final OskariLayer layer = parseLayer(json);
 
-        final OskariLayerService service = new OskariLayerServiceIbatisImpl();
+        final OskariLayerService service = new OskariLayerServiceMybatisImpl();
         final List<OskariLayer> dbLayers = service.findByUrlAndName(layer.getUrl(), layer.getName());
         if(!dbLayers.isEmpty()) {
             if(dbLayers.size() > 1) {
@@ -57,7 +54,7 @@ public class LayerHelper {
             // layer doesn't exist, insert it
             int id = service.insert(layer);
             layer.setId(id);
-            setupLayerPermissions(json.getJSONObject("role_permissions"), layer);
+            setupLayerPermissions(json.getJSONObject("role_permissions"), id);
 
             final String groupName = json.getString("inspiretheme");
             // handle inspiretheme
@@ -119,6 +116,11 @@ public class LayerHelper {
         if (options != null) {
             layer.setOptions(options);
         }
+        // handle attributes, check for null to avoid overwriting empty JS Object Literal
+        final JSONObject attributes = json.optJSONObject("attributes");
+        if (attributes != null) {
+            layer.setAttributes(attributes);
+        }
 
         // setup data producer/layergroup
         final DataProvider dataProvider = dataProviderService.findByName(orgName);
@@ -138,13 +140,15 @@ public class LayerHelper {
         "Administrator" : ["VIEW_LAYER"]
     }
     */
-    private static void setupLayerPermissions(JSONObject permissions, OskariLayer layer) {
+    private static void setupLayerPermissions(JSONObject permissions, int layerId) {
 
         // setup rights
         if(permissions == null) {
             return;
         }
-        final Resource res = new OskariLayerResource(layer);
+        final Resource res = new Resource();
+        res.setType(ResourceType.maplayer);
+        res.setMapping(Integer.toString(layerId));
 
         final Iterator<String> roleNames = permissions.keys();
         while(roleNames.hasNext()) {
@@ -160,13 +164,13 @@ public class LayerHelper {
             }
             for (int i = 0; i < permissionTypes.length(); ++i) {
                 final Permission permission = new Permission();
-                permission.setExternalType(Permissions.EXTERNAL_TYPE_ROLE);
-                permission.setExternalId("" + role.getId());
+                permission.setExternalType(PermissionExternalType.ROLE);
+                permission.setExternalId((int) role.getId());
                 final String type = permissionTypes.optString(i);
                 permission.setType(type);
                 res.addPermission(permission);
             }
         }
-        permissionsService.saveResourcePermissions(res);
+        permissionsService.saveResource(res);
     }
 }

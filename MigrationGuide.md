@@ -1,5 +1,132 @@
 # Migration guide
 
+## 1.53.0
+
+### Migration to the new WFS integration backend
+
+This version includes a migration that will change the database migrating all apps to use a new WFS integration backend.
+The change is described here https://github.com/oskariorg/oskari-docs/issues/109
+
+You should backup your database before upgrading so you can restore it if you have some functionality in your app that is NOT
+compatible with the new system. Add this to oskari-ext.properties to continue using the transport for WFS-layers on this version:
+
+    flyway.1.53.wfs.optout=true
+
+It is heavily recommended that you migrate and report any problems you might encounter at this point.
+On this version you can still opt-out of the migration but the next version will force the migration and remove
+ references to the transport webapp. You can consider the transport webapp deprecated.
+
+Note! You also need to add an import to the frontend code for your apps main.js:
+
+    // this should already be there:
+    import 'oskari-loader!oskari-frontend/packages/mapping/ol3/mapwfs2/bundle.js';
+    // Replace it with this row:
+    import 'oskari-loader!oskari-frontend/packages/mapping/ol3/wfsvector/bundle.js';
+
+### Disabled CSRF protection on webapp level
+
+The previous cross-site request forgery protection used cookies and http headers to detect if a given request to the server
+was legit. Because certain browsers block 3rd party cookies by default this didn't really work on embedded maps.
+ Java libraries don't yet support adding SameSite-flag on cookies which is the current solution to protect against
+ CSRF attacks. You should configure your reverse-proxy to modify cookies to have SameSite=lax flag.
+
+Here's an example how to do this with nginx: https://github.com/oskariorg/sample-configs/commit/e3802ccd84d866dc1643f7dfc98f80bf6fe5cde9
+
+### PermissionService migrated to MyBatis
+
+Also class packages have been changed a bit so manual updates is required for server-extensions referencing PermissionService.
+
+- fi.nls.oskari.permission.domain.Permission is now org.oskari.permissions.model.Permission
+- fi.nls.oskari.permission.domain.Resource is now org.oskari.permissions.model.Resource
+- fi.nls.oskari.map.data.domain.OskariLayerResource is now org.oskari.permissions.model.OskariLayerResource and is now deprecated.
+
+See https://github.com/nls-oskari/kartta.paikkatietoikkuna.fi/pull/102 for example and
+https://github.com/oskariorg/oskari-server/pull/271 for details about the change.
+
+OskariLayerResource has been deprecated since it no longer serves any purpose. The mapping of layer permissions mapping
+ has been changed from type+url+name to use the layer id. Note that this might break some old migrations that use it
+ if run on an empty database
+
+## 1.52.0
+
+### Class renaming:
+
+- BundleServiceIbatisImpl is now BundleServiceMybatisImpl
+- ViewServiceIbatisImpl is now AppSetupServiceMybatisImpl
+- DataProviderServiceIbatisImpl is now DataProviderServiceMybatisImpl
+- OskariLayerServiceIbatisImpl is now OskariLayerServiceMybatisImpl
+
+These might be used in app-specific migrations so you will need to update references to these.
+
+### Userlayer SLD update
+
+There was a small issue on the SLD for userlayers where polygon border style was rendered with line style.
+To fix this you will need to manually update the SLD on the GeoServer Oskari uses to store userlayers. The SLD to use
+can be found here: https://github.com/oskariorg/oskari-server/blob/master/content-resources/src/main/resources/sld/userlayer/UserLayerDefaultStyle.sld
+
+### Optional: New WFS-integration system
+
+This version includes a new implementation for interacting with WFS-based map layers that will replace the current "transport" webapp in the future.
+It supports WFS 3.0 endpoints and hands the features as vectors instead of images to the frontend.
+We would appreciate any feedback on the new implementation and testing it should not be a huge pain to setup.
+
+Replace 'Oskari.mapframework.bundle.mapwfs2.plugin.WfsLayerPlugin' with 'Oskari.wfsvector.WfsVectorLayerPlugin' on mapfull bundle configurations.
+You can do this by modifying the applications/[your app folder]/index.js on your applications frontend code to change the appsetup it gets from the server:
+
+```
+jQuery(document).ready(function() {
+    Oskari.app.loadAppSetup(ajaxUrl + 'action_route=GetAppSetup', window.controlParams, function() {
+        jQuery('#mapdiv').append('Unable to start');
+    }, function() {
+         // App started
+    }, function(appSetup) {
+        // modify the appsetup we got from server
+        var plugins = JSON.stringify(appSetup.configuration.mapfull.conf.plugins);
+        var pluginRemoved = plugins.split('Oskari.mapframework.bundle.mapwfs2.plugin.WfsLayerPlugin');
+        var modifiedPlugins = pluginRemoved.join('Oskari.wfsvector.WfsVectorLayerPlugin');
+        appSetup.configuration.mapfull.conf.plugins = JSON.parse(modifiedPlugins);
+    });
+});
+```
+
+OR you can use this Flyway migration as an example for your own instance to test it out:
+
+https://github.com/nls-oskari/kartta.paikkatietoikkuna.fi/blob/develop/server-extension/src/main/java/flyway/paikkis/V2_36__use_wfs_vector_layer_plugin.java
+
+You will also need to add "wfsvector" after "mapwfs2" bundle import in applications/[your app folder]/main.js on the frontend of your app:
+```
+import 'oskari-loader!oskari-frontend/packages/mapping/ol3/mapwfs2/bundle.js';
+import 'oskari-loader!oskari-frontend/packages/mapping/ol3/wfsvector/bundle.js';
+```
+
+## 1.51.0
+
+### Logging configuration changes required
+
+Log4j was updated to version 2.x. 
+- If your application only uses the Oskari logger (fi.nls.oskari.log.LogFactory), no changes are needed.
+- If your application depends directly on the old 1.2.x log4j provided by Oskari, you should migrate to version 2
+- If your application depends slf4j provided by Oskari, you should change the slf4j implementation library from `slf4j-log4j12` to
+
+```
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-slf4j-impl</artifactId>
+</dependency>
+```
+
+Log4j2 uses a new syntax for logger configuration. It will look for `log4j2.xml` named file on the class path (you can put it under Jetty directory `resources/`).
+Example configuration can be found in the documentation:
+
+- https://github.com/oskariorg/sample-configs/blob/master/jetty-9/oskari-server/resources/log4j2.xml
+- https://logging.apache.org/log4j/2.0/manual/configuration.html
+
+### SLDs need to be updated to work with current GeoServer version
+
+The updated SLDs can be found in https://github.com/oskariorg/oskari-server/tree/master/content-resources/src/main/resources/sld
+
+These need to be manually updated on the GeoServer that is used for providing the user generated content (the included GeoServer if not customized).
+
 ## 1.50.0
 
 This release requires Jetty 9 to be used with the transport webapp. Jetty 8 no longer works as the CometD library has been updated.

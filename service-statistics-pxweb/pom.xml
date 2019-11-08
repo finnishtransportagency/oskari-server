@@ -6,7 +6,7 @@
     <parent>
         <artifactId>oskari-parent</artifactId>
         <groupId>fi.nls.oskari</groupId>
-        <version>1.50.0</version>
+        <version>1.53.1</version>
     </parent>
 
     <groupId>fi.nls.oskari.service</groupId>
@@ -45,7 +45,7 @@
         </dependency>
         <dependency>
             <groupId>org.powermock</groupId>
-            <artifactId>powermock-api-mockito</artifactId>
+            <artifactId>powermock-api-mockito2</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

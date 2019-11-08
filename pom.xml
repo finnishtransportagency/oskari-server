@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>fi.nls.oskari</groupId>
     <artifactId>oskari-parent</artifactId>
-    <version>1.50.0</version>
+    <version>1.53.1</version>
     <packaging>pom</packaging>
 
     <name>Oskari parent POM</name>
@@ -48,12 +48,11 @@
         <fi.nls.oskari.version>${project.version}</fi.nls.oskari.version>
         <fi.nls.oskari.service.version>${project.version}</fi.nls.oskari.service.version>
 
-        <spring.version>4.3.20.RELEASE</spring.version>
+        <spring.version>4.3.25.RELEASE</spring.version>
         <!-- saml 1.0.3.RELEASE uses security 4.2.5, check saml-extension for upgrades before updating security
             Tested with 4.2.6.
         -->
-        <spring-security.version>4.2.9.RELEASE</spring-security.version>
-        <spring.saml.version>1.0.4.RELEASE</spring.saml.version>
+        <spring-security.version>4.2.13.RELEASE</spring-security.version>
 
         <javax.servlet.version>3.1.0</javax.servlet.version>
         <javax.servlet.jsp.version>2.0</javax.servlet.jsp.version>
@@ -65,14 +64,14 @@
         <commons-collections.version>3.2.2</commons-collections.version>
         <commons-httpclient.version>3.1</commons-httpclient.version>
         <commons-codec.version>1.7</commons-codec.version>
-        <commons-fileupload.version>1.3.2</commons-fileupload.version>
+        <commons-fileupload.version>1.4</commons-fileupload.version>
         <commons-dbcp.version>1.4</commons-dbcp.version>
         <commons-dbcp2.version>2.0.1</commons-dbcp2.version>
 
         <staxon.version>1.2</staxon.version>
         <lambdaj.version>2.3.3</lambdaj.version>
         <kevinsawicki.http-request.version>4.0</kevinsawicki.http-request.version>
-        <jsoup.version>1.11.3</jsoup.version>
+        <jsoup.version>1.12.1</jsoup.version>
         <ibatis.version>2.3.4.726</ibatis.version>
         <axiom.version>1.2.20</axiom.version>
         <commons-lang3.version>3.0</commons-lang3.version>
@@ -80,9 +79,9 @@
         <stax2-api.version>3.1.4</stax2-api.version>
         <woodstox.version>5.1.0</woodstox.version>
         <jsonld-java.version>0.3</jsonld-java.version>
-        <xmlunit.version>1.5</xmlunit.version>
-        <jedis.version>2.9.0</jedis.version>
-        <jackson.version>2.9.8</jackson.version>
+        <xmlunit.version>1.6</xmlunit.version>
+        <jedis.version>2.9.3</jedis.version>
+        <jackson.version>2.9.9</jackson.version>
 
         <fi.mml.capabilities.version>1.3.0</fi.mml.capabilities.version>
         <fi.mml.wms.version>1.1.1</fi.mml.wms.version>
@@ -97,21 +96,23 @@
         <xmlbeans.version>2.6.0</xmlbeans.version>
         <geotools.version>19.2</geotools.version>
         <geotools.major>19</geotools.major>
-        <jts.version>1.13</jts.version>
+        <jts.version>1.14.0</jts.version>
         <mvt.version>2.0.0</mvt.version>
         <!-- gt-xsd-kml.version>9.3</gt-xsd-kml.version -->
         <flexjson.version>2.0</flexjson.version>
-        <deegree.version>2</deegree.version>
 
-        <mybatis.version>3.4.6</mybatis.version>
-        <pdfbox.version>2.0.12</pdfbox.version>
+        <pdfbox.version>2.0.16</pdfbox.version>
+        <mybatis.version>3.5.2</mybatis.version>
+        <hystrix.version>1.5.18</hystrix.version>
         <!-- Test deps versions -->
-        <powermock.version>1.5</powermock.version>
+        <powermock.version>2.0.0</powermock.version>
         <junit.version>4.11</junit.version>
 
-        <log4j.version>1.2.17</log4j.version>
+        <log4j.version>2.12.1</log4j.version>
         <slf4j.version>1.7.12</slf4j.version>
-        <metrics.version>4.0.3</metrics.version>
+        <metrics.version>4.1.0</metrics.version>
+        <h2database.version>1.4.199</h2database.version>
+        <xom.version>1.2.5</xom.version>
     </properties>
 
     <dependencies>
@@ -270,6 +271,11 @@
                 <version>${fi.nls.oskari.service.version}</version>
             </dependency>
             <dependency>
+                <groupId>org.oskari.service</groupId>
+                <artifactId>service-statistics-unsd</artifactId>
+                <version>${fi.nls.oskari.service.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>fi.nls.oskari.service</groupId>
                 <artifactId>service-csw</artifactId>
                 <version>${fi.nls.oskari.service.version}</version>
@@ -315,11 +321,6 @@
                 <version>${fi.nls.oskari.service.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>fi.nls.oskari.service</groupId>
-                <artifactId>oskari-wfs</artifactId>
-                <version>${fi.nls.oskari.service.version}</version>
-            </dependency>
             <dependency>
                 <groupId>fi.nls.oskari.service</groupId>
                 <artifactId>oskari-feature-engine</artifactId>
@@ -448,10 +449,16 @@
 
             <dependency>
                 <groupId>org.oskari</groupId>
-                <artifactId>service-mvt-wfs</artifactId>
+                <artifactId>service-wfs-client</artifactId>
                 <version>${fi.nls.oskari.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.oskari</groupId>
+                <artifactId>service-wfs3</artifactId>
+                <version>${fi.nls.oskari.version}</version>
+            </dependency>
+            
             <!-- Spring -->
             <dependency>
                 <groupId>org.springframework.security.extensions</groupId>
@@ -467,18 +474,44 @@
                 <groupId>org.springframework.security</groupId>
                 <artifactId>spring-security-web</artifactId>
                 <version>${spring-security.version}</version>
+                <exclusions>
+                    <!-- exclude aopalliance
+                    Reason: Same classes are included in spring-aop (causing conflict if we have both)
+                    -->
+                    <exclusion>
+                        <groupId>aopalliance</groupId>
+                        <artifactId>aopalliance</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.springframework.security</groupId>
                 <artifactId>spring-security-config</artifactId>
                 <version>${spring-security.version}</version>
+                 <exclusions>
+                    <!-- exclude aopalliance
+                    Reason: Same classes are included in spring-aop (causing conflict if we have both)
+                    -->
+                    <exclusion>
+                        <groupId>aopalliance</groupId>
+                        <artifactId>aopalliance</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
-                <groupId>org.springframework.security</groupId>
-                <artifactId>spring-security-crypto</artifactId>
-                <version>${spring-security.version}</version>
-            </dependency>
-
+								<groupId>org.springframework.security</groupId>
+								<artifactId>spring-security-core</artifactId>
+								<version>${spring-security.version}</version>
+								<exclusions>
+                    <!-- exclude aopalliance
+                    Reason: Same classes are included in spring-aop (causing conflict if we have both)
+                    -->
+                    <exclusion>
+                        <groupId>aopalliance</groupId>
+                        <artifactId>aopalliance</artifactId>
+                    </exclusion>
+                </exclusions>
+						</dependency>
             <dependency>
                 <groupId>xerces</groupId>
                 <artifactId>xercesImpl</artifactId>
@@ -489,6 +522,15 @@
                 <groupId>org.apache.xmlbeans</groupId>
                 <artifactId>xmlbeans</artifactId>
                 <version>${xmlbeans.version}</version>
+                <exclusions>
+                    <!-- exclude stax-api
+                    	Reason: xml-apis lib provide newer version of classes which are used (causing conflict if we have both)
+                    -->
+                    <exclusion>
+                        <groupId>stax</groupId>
+                        <artifactId>stax-api</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
@@ -620,6 +662,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2database.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>de.odysseus.staxon</groupId>
                 <artifactId>staxon</artifactId>
                 <version>${staxon.version}</version>
@@ -688,6 +736,17 @@
                         <groupId>org.apache.james</groupId>
                         <artifactId>apache-mime4j-core</artifactId>
                     </exclusion>
+                    <!-- exclude stax-api
+                    	Reason: xml-apis lib provide newer version of classes which are used (causing conflict if we have both)
+                     -->
+                    <exclusion>
+                        <groupId>org.apache.geronimo.specs</groupId>
+                        <artifactId>geronimo-stax-api_1.0_spec</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.geronimo.specs</groupId>
+                        <artifactId>geronimo-activation_1.1_spec</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
@@ -734,7 +793,12 @@
 
             <dependency>
                 <groupId>com.vividsolutions</groupId>
-                <artifactId>jts</artifactId>
+                <artifactId>jts-core</artifactId>
+                <version>${jts.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.vividsolutions</groupId>
+                <artifactId>jts-io</artifactId>
                 <version>${jts.version}</version>
             </dependency>
 
@@ -800,11 +864,6 @@
                 <version>${geotools.version}</version>
                 <!-- version>${gt-xsd-kml.version}</version -->
             </dependency>
-            <dependency>
-                <groupId>org.deegree</groupId>
-                <artifactId>deegree</artifactId>
-                <version>${deegree.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>javax.xml</groupId>
@@ -845,6 +904,11 @@
                 <artifactId>pdfbox</artifactId>
                 <version>${pdfbox.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.netflix.hystrix</groupId>
+                <artifactId>hystrix-core</artifactId>
+                <version>${hystrix.version}</version>
+            </dependency>
 
             <!-- Managed test dependencies -->
             <dependency>
@@ -869,7 +933,7 @@
             </dependency>
             <dependency>
                 <groupId>org.powermock</groupId>
-                <artifactId>powermock-api-mockito</artifactId>
+                <artifactId>powermock-api-mockito2</artifactId>
                 <version>${powermock.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -880,19 +944,25 @@
                 <version>${slf4j.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j-impl</artifactId>
                 <version>${log4j.version}</version>
             </dependency>
             <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>apache-log4j-extras</artifactId>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-api</artifactId>
                 <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-core</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
+            <dependency>
+		<groupId>xom</groupId>
+		<artifactId>xom</artifactId>
+		<version>${xom.version}</version>
+		<scope>provided</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -1018,6 +1088,31 @@
                     <verbose>false</verbose>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>3.1.8</version>
+                <configuration>
+                    <excludeFilterFile>spotbugs__ignore_filter.xml</excludeFilterFile>
+                </configuration>
+                <dependencies>
+                    <!-- overwrite dependency on spotbugs if you want to specify the version of spotbugs -->
+                    <dependency>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs</artifactId>
+                        <version>3.1.9</version>
+                    </dependency>
+                </dependencies>
+                <!-- executions>
+                    <execution>
+                        <id>execution1</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions -->
+            </plugin>
         </plugins>
     </build>
     <repositories>
@@ -1110,7 +1205,7 @@
                     <plugin>
                         <groupId>org.owasp</groupId>
                         <artifactId>dependency-check-maven</artifactId>
-                        <version>2.1.1</version>
+                        <version>5.0.0</version>
                         <executions>
                             <execution>
                                 <goals>
@@ -1133,7 +1228,6 @@
         <module>service-users</module>
         <module>service-permissions</module>
         <module>service-map</module>
-        <module>service-wfs</module>
         <module>service-myplaces</module>
         <module>service-rating</module>
         <module>service-capabilities-update</module>
@@ -1165,19 +1259,17 @@
         <module>service-statistics-kapa</module>
         <module>service-statistics-eurostat</module>
         <module>service-statistics-pxweb</module>
+        <module>service-statistics-unsd</module>
         <module>control-statistics</module>
 
         <!-- oskari map -->
         <module>servlet-map</module>
-        <module>servlet-saml-config</module>
-        <module>webapp-map</module>
 
         <!-- transport  -->
         <module>service-datamodel</module>
         <module>geoserver-ext/OskariMarkFactory</module>
         <module>service-feature-engine</module>
         <module>servlet-transport</module>
-        <module>webapp-transport</module>
 
         <!-- setup -->
         <module>webapp-setup</module>
@@ -1198,7 +1290,9 @@
 
         <module>control-mvt</module>
         <module>service-mvt</module>
-        <module>service-mvt-wfs</module>
+
+        <module>service-wfs-client</module>
+        <module>service-wfs3</module>
     </modules>
 
 </project>

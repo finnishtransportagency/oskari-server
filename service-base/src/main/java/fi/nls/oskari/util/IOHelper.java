@@ -10,6 +10,7 @@ import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
@@ -17,6 +18,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -33,12 +35,16 @@ public class IOHelper {
     public static final String HEADER_USERAGENT = "User-Agent";
     public static final String HEADER_REFERER = "Referer";
     public static final String HEADER_ACCEPT = "Accept";
+    public static final String HEADER_ACCEPT_CHARSET = "Accept-Charset";
+    public static final String HEADER_ACCEPT_ENCODING = "Accept-Encoding";
 
     public static final String CHARSET_UTF8 = "UTF-8";
     public static final String DEFAULT_CHARSET = CHARSET_UTF8;
+    public static final Charset DEFAULT_CHARSET_CS = StandardCharsets.UTF_8;
     public static final String CONTENTTYPE_FORM_URLENCODED = "application/x-www-form-urlencoded";
     public static final String CONTENT_TYPE_JSON = "application/json";
     public static final String CONTENT_TYPE_XML = "application/xml";
+    public static final String ENCODING_GZIP = "gzip";
     private static final Logger log = LogFactory.getLogger(IOHelper.class);
 
     private static SSLSocketFactory TRUSTED_FACTORY;
@@ -46,7 +52,7 @@ public class IOHelper {
 
     private static int CONNECTION_TIMEOUT_MS = 3000;
     private static int READ_TIMEOUT_MS = 60000;
-    private static String MY_DOMAIN = "http://localhost:2373";
+    private static String MY_DOMAIN = "http://localhost:8080";
 
     private static boolean trustAllCerts = false;
     private static boolean trustAllHosts = false;
@@ -85,6 +91,14 @@ public class IOHelper {
      * @throws IOException
      */
     public static String readString(HttpURLConnection conn) throws IOException {
+        try {
+            // addRequestProperty() will not overwrite if something else has been set so it's safe here
+            conn.addRequestProperty(HEADER_ACCEPT_ENCODING, ENCODING_GZIP);
+        } catch (IllegalStateException ignored) {
+            log.ignore("Tried to add gzip header but connection was opened already so we are too late", ignored);
+            // too late to add headers, something was posted as payload already.
+            // Just skip and move on to reading the response
+        }
         return readString(conn, DEFAULT_CHARSET);
     }
     /**
@@ -95,45 +109,78 @@ public class IOHelper {
      * @throws IOException
      */
     public static String readString(HttpURLConnection conn, final String charset) throws IOException {
-        if("gzip".equals(conn.getContentEncoding())) {
+        if(ENCODING_GZIP.equals(conn.getContentEncoding())) {
             return readString(new GZIPInputStream(conn.getInputStream()), charset);
         }
         return readString(conn.getInputStream(), charset);
     }
 
-    /**
-     * Reads the given input stream and converts its contents to a string using given charset
-     * @param is
-     * @param charset
-     * @return
-     * @throws IOException
-     */
-    public static String readString(InputStream is, final String charset)
-            throws IOException {
-        /*
-         * To convert the InputStream to String we use the Reader.read(char[]
-         * buffer) method. We iterate until the Reader return -1 which means
-         * there's no more data to read. We use the StringWriter class to
-         * produce the string.
-         */
 
-        if (is == null) {
+    public static List<String> readLines(InputStream in) throws IOException {
+        return readLines(in, StandardCharsets.UTF_8);
+    }
+
+    public static List<String> readLines(InputStream in, Charset cs) throws IOException {
+        try (BufferedReader br = new BufferedReader(
+                new InputStreamReader(in, cs))) {
+            return br.lines().collect(Collectors.toList());
+        } finally {
+            in.close();
+        }
+    }
+
+    /**
+     * Reads the given InputStream and converts its contents to a String using given charset
+     * Also closes the InputStream
+     * @param in the InputStream, if null then an empty String is returned
+     * @param charset if null then DEFAULT_CHARSET is used
+     * @return InputStream's contents as a String
+     */
+    public static String readString(InputStream is, String charset) throws IOException {
+        Charset cs = charset == null ? DEFAULT_CHARSET_CS : Charset.forName(charset);
+        return readString(is, cs);
+    }
+
+    /**
+     * Reads the given InputStream and converts its contents to a String using given charset
+     * Also closes the InputStream
+     * @param in the InputStream, if null then an empty String is returned
+     * @param cs if null then DEFAULT_CHARSET_CS is used
+     * @return InputStream's contents as a String
+     */
+    public static String readString(InputStream in, Charset cs) throws IOException {
+        if (in == null) {
             return "";
         }
+        if (cs == null) {
+            cs = DEFAULT_CHARSET_CS;
+        }
 
-        final Writer writer = new StringWriter();
-        final char[] buffer = new char[1024];
-        try {
-            final Reader reader = new BufferedReader(new InputStreamReader(is,
-                    charset == null ? DEFAULT_CHARSET : charset ));
+        char[] str = new char[512];
+        int capacity = str.length;
+        int len = 0;
+
+        char[] buf = new char[4096];
+        try (Reader reader = new InputStreamReader(in, cs)) {
             int n;
-            while ((n = reader.read(buffer)) != -1) {
-                writer.write(buffer, 0, n);
+            while ((n = reader.read(buf, 0, 4096)) != -1) {
+                int sizeRequired = len + n;
+                if (sizeRequired > capacity) {
+                    int newCapacity = Math.max(sizeRequired, capacity * 2);
+                    char[] tmp = new char[newCapacity];
+                    System.arraycopy(str, 0, tmp, 0, len);
+                    str = tmp;
+                    capacity = newCapacity;
+                }
+                System.arraycopy(buf, 0, str, len, n);
+                len += n;
             }
         } finally {
-            is.close();
+            // InputStreamReader#close probably already closed this but let's be explicit
+            in.close();
         }
-        return writer.toString();
+
+        return new String(str, 0, len);
     }
 
     /**
@@ -143,7 +190,7 @@ public class IOHelper {
      * @throws IOException
      */
     public static byte[] readBytes(HttpURLConnection conn) throws IOException {
-        if("gzip".equals(conn.getContentEncoding())) {
+        if(ENCODING_GZIP.equals(conn.getContentEncoding())) {
             return readBytes(new GZIPInputStream(conn.getInputStream()));
         }
         return readBytes(conn.getInputStream());
@@ -227,9 +274,6 @@ public class IOHelper {
 
     /**
      * Opens a HttpURLConnection to given url
-     * @param pUrl
-     * @return
-     * @throws IOException
      */
     public static HttpURLConnection getConnection(final String pUrl)
             throws IOException {
@@ -238,9 +282,98 @@ public class IOHelper {
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setConnectTimeout(CONNECTION_TIMEOUT_MS);
         conn.setReadTimeout(READ_TIMEOUT_MS);
+        conn.setRequestProperty(HEADER_ACCEPT_CHARSET, CHARSET_UTF8);
         if(trustAllCerts) trustAllCerts(conn);
         if(trustAllHosts) trustAllHosts(conn);
         return conn;
+    }
+
+    /**
+     * Opens a HttpURLConnection to given url and sets up basic authentication with given user/pass.
+     */
+    public static HttpURLConnection getConnection(final String pUrl,
+                                                  final String userName, final String password)
+            throws IOException {
+        final HttpURLConnection con = getConnection(pUrl);
+        setupBasicAuth(con, userName,password);
+        return con;
+    }
+
+    /**
+     * Opens a HttpURLConnection to given url and sets up basic authentication with given user/pass
+     * and with a map of query parameters
+     */
+    public static HttpURLConnection getConnection(String pUrl,
+            String user, String pass, Map<String, String> query) throws IOException {
+        return getConnection(pUrl, user, pass, query, null);
+    }
+
+    /**
+     * Opens a HttpURLConnection to given url and sets up basic authentication with given user/pass
+     * and with a map of query parameters and a map of request headers
+     */
+    public static HttpURLConnection getConnection(String pUrl,
+            String user, String pass, Map<String, String> query, Map<String, String> headers) throws IOException {
+        String request = constructUrl(pUrl, query);
+        HttpURLConnection conn = getConnection(request, user, pass);
+        if (headers != null) {
+            headers.forEach((k, v) -> conn.setRequestProperty(k, v));
+        }
+        return conn;
+    }
+
+    public static HttpURLConnection followRedirect(HttpURLConnection conn, int redirectLatch) throws IOException {
+        return followRedirect(conn, null, null, null, null, redirectLatch);
+    }
+
+    public static HttpURLConnection followRedirect(HttpURLConnection conn,
+            String user, String pass, int redirectLatch) throws IOException {
+        return followRedirect(conn, user, pass, null, null, redirectLatch);
+    }
+
+    public static HttpURLConnection followRedirect(HttpURLConnection conn,
+            String user, String pass, Map<String, String> query, int redirectLatch) throws IOException {
+        return followRedirect(conn, user, pass, query, null, redirectLatch);
+    }
+
+    /**
+     * Follows redirects on the response. Follows the redirect-chain up to redirectLatch times, if
+     * redirectLatch reaches 0 we fail with an IOException (avoid a->b->a->b... loops etc)
+     *
+     * @param conn HttpURLConnection waiting for a response that might be a redirect response
+     * @param user optional username for basic auth
+     * @param pass optional password for basic auth
+     * @param query optional query parameters that should be sent
+     * @param headers optional request headers that should be sent
+     * @param redirectLatch number of chained redirects to follow
+     * @return HttpURLConnection that is not a redirect response
+     * @throws IOException if one occurs naturally of if redirectLatch reaches 0
+     */
+    public static HttpURLConnection followRedirect(HttpURLConnection conn,
+            String user, String pass, Map<String, String> query,
+            Map<String, String> headers, int redirectLatch) throws IOException {
+        final int sc = conn.getResponseCode();
+        if (sc == HttpURLConnection.HTTP_MOVED_PERM
+                || sc == HttpURLConnection.HTTP_MOVED_TEMP
+                || sc == HttpURLConnection.HTTP_SEE_OTHER) {
+            if (--redirectLatch == 0) {
+                throw new IOException("Too many redirects!");
+            }
+            String location = conn.getHeaderField("Location");
+
+            // If user specified a query map then remove query part (if one exists) from the Location
+            if (query != null && !query.isEmpty()) {
+                int i = location.indexOf('?');
+                i = i < 0 ? location.length() : i;
+                location = location.substring(0, i);
+            }
+
+            log.info("Following redirect to", location);
+            HttpURLConnection newConnection = getConnection(location, user, pass, query, headers);
+            return followRedirect(newConnection, user, pass, query, headers, redirectLatch);
+        } else {
+            return conn;
+        }
     }
 
     /**
@@ -281,22 +414,6 @@ public class IOHelper {
         return defaultCharset;
     }
     /**
-     * Opens a HttpURLConnection to given url and sets up basic authentication with given user/pass.
-     * @param pUrl
-     * @param userName
-     * @param password
-     * @return
-     * @throws IOException
-     */
-    public static HttpURLConnection getConnection(final String pUrl,
-                                                  final String userName, final String password)
-            throws IOException {
-        final HttpURLConnection con = getConnection(pUrl);
-        setupBasicAuth(con, userName,password);
-        return con;
-    }
-
-    /**
      * Sets the authorization header for connection.
      * @param con
      * @param userName
@@ -322,7 +439,7 @@ public class IOHelper {
             log.info("Nothing to write to connection:", con.getURL());
             return;
         }
-        writeToConnection(con, postData.getBytes());
+        writeToConnection(con, postData.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -633,6 +750,10 @@ public class IOHelper {
             byte[] body) throws IOException {
         return send(conn, "POST", contentType, body);
     }
+    public static HttpURLConnection post(HttpURLConnection conn, String contentType,
+                                         String body) throws IOException {
+        return send(conn, "POST", contentType, body.getBytes(StandardCharsets.UTF_8));
+    }
 
     public static HttpURLConnection post(HttpURLConnection conn, String contentType,
             ByteArrayOutputStream baos) throws IOException {
@@ -835,27 +956,27 @@ public class IOHelper {
      * @return constructed url including additional parameters
      */
     public static String constructUrl(final String url, Map<String, String> params) {
-        if(params == null) {
+        if(params == null || params.isEmpty()) {
             return url;
         }
-        if(params.isEmpty()) {
+
+        final String queryString = getParams(params);
+        return addQueryString(url, queryString);
+    }
+
+    public static String addQueryString(String url, String queryString) {
+        if (queryString == null || queryString.trim().isEmpty()) {
             return url;
         }
         final StringBuilder urlBuilder = new StringBuilder(url);
-
-        if(!url.contains("?")) {
-            urlBuilder.append("?");
+        char lastChar = urlBuilder.charAt(urlBuilder.length()-1);
+        if (!url.contains("?")) {
+            lastChar = '?';
+            urlBuilder.append(lastChar);
         }
-        else {
-            final char lastChar = urlBuilder.charAt(urlBuilder.length()-1);
-            if((lastChar != '&' && lastChar != '?')) {
-                urlBuilder.append("&");
-            }
-        }
-        final String queryString = getParams(params);
-        if(queryString.isEmpty()) {
-            // drop last character ('?' or '&')
-            return urlBuilder.substring(0, urlBuilder.length()-1);
+        else if (lastChar != '&' && lastChar != '?') {
+            lastChar = '&';
+            urlBuilder.append(lastChar);
         }
         return urlBuilder.append(queryString).toString();
     }
@@ -877,10 +998,12 @@ public class IOHelper {
      * @param value
      * @return
      */
-    public static String addUrlParam(final String url, String key, String value) {
-        final Map<String, String> params = new HashMap<>(1);
+    public static String addUrlParam(final String url, String key, String... value) {
+        final Map<String, String[]> params = new HashMap<>(1);
         params.put(key, value);
-        return constructUrl(url, params);
+        final String queryString = getParamsMultiValue(params);
+        return addQueryString(url, queryString);
+
     }
 
     public static String getParams(Map<String, String> kvps) {
@@ -896,8 +1019,8 @@ public class IOHelper {
             if (key == null || key.isEmpty()) {
                 continue;
             }
-            final String keyEnc = urlEncode(key);
-            final String valueEnc = urlEncode(value);
+            final String keyEnc = urlEncodePayload(key);
+            final String valueEnc = urlEncodePayload(value);
             if (!first) {
                 sb.append('&');
             }
@@ -925,12 +1048,12 @@ public class IOHelper {
             if (key == null || key.isEmpty() || values == null || values.length == 0) {
                 continue;
             }
-            String keyEnc = urlEncode(key);
+            String keyEnc = urlEncodePayload(key);
             for (String value : values) {
                 if (value == null || value.isEmpty()) {
                     continue;
                 }
-                String valueEnc = urlEncode(value);
+                String valueEnc = urlEncodePayload(value);
                 if (!first) {
                     sb.append('&');
                 }
@@ -941,6 +1064,23 @@ public class IOHelper {
         return sb.toString();
     }
 
+    /**
+     * Use for encoding querystring params and payload in POST
+     * @param s
+     * @return
+     */
+    public static String urlEncodePayload(String s) {
+        // URLEncoder changes white space to + that only works on application/x-www-form-urlencoded-type encoding AND needs to be used in paths
+        // For parameters etc we want to have it as %20 instead
+        // so http://domain/my path?q=my value SHOULD be encoded as -> http://domain/my+path?q=my%20value
+        return urlEncode(s).replace("+", "%20");
+    }
+
+    /**
+     * Use for encoding URLs without querystring
+     * @param s
+     * @return
+     */
     public static String urlEncode(String s) {
         try {
             return URLEncoder.encode(s, CHARSET_UTF8);

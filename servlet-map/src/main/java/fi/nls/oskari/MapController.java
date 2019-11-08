@@ -8,7 +8,7 @@ import fi.nls.oskari.domain.map.view.ViewTypes;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
 import fi.nls.oskari.map.view.util.ViewHelper;
 import fi.nls.oskari.spring.SpringEnvHelper;
 import fi.nls.oskari.spring.extension.OskariParam;
@@ -45,7 +45,7 @@ public class MapController {
 
     private final static String KEY_RESPONSE_HEADER_PREFIX = "oskari.page.header.";
 
-    private final ViewService viewService = new ViewServiceIbatisImpl();
+    private final ViewService viewService = new AppSetupServiceMybatisImpl();
     private String version = null;
     private final Set<String> paramHandlers = new HashSet<>();
 
@@ -195,6 +195,8 @@ public class MapController {
 
 
         JSONHelper.putValue(controlParams, PARAM_SECURE, request.getParameter(PARAM_SECURE));
+        // pass language as control param so we don't have to rely on cookie for getting the same language for GetAppSetup
+        JSONHelper.putValue(controlParams, PARAM_LANGUAGE, params.getLocale().getLanguage());
         JSONHelper.putValue(controlParams, GetAppSetupHandler.PARAM_NO_SAVED_STATE, request.getParameter(GetAppSetupHandler.PARAM_NO_SAVED_STATE));
         model.addAttribute(KEY_CONTROL_PARAMS, controlParams.toString());
 

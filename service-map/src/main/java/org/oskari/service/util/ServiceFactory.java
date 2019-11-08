@@ -2,22 +2,22 @@ package org.oskari.service.util;
 
 import fi.mml.map.mapwindow.service.db.OskariMapLayerGroupServiceIbatisImpl;
 import fi.mml.map.mapwindow.service.db.OskariMapLayerGroupService;
-import fi.mml.portti.service.db.permissions.PermissionsService;
-import fi.mml.portti.service.db.permissions.PermissionsServiceIbatisImpl;
 import fi.mml.portti.service.search.SearchService;
 import fi.mml.portti.service.search.SearchServiceImpl;
 import fi.nls.oskari.map.layer.DataProviderService;
-import fi.nls.oskari.map.layer.DataProviderServiceIbatisImpl;
+import fi.nls.oskari.map.layer.DataProviderServiceMybatisImpl;
 import fi.nls.oskari.map.layer.OskariLayerService;
-import fi.nls.oskari.map.layer.OskariLayerServiceIbatisImpl;
+import fi.nls.oskari.map.layer.OskariLayerServiceMybatisImpl;
 import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLinkService;
 import fi.nls.oskari.map.layer.group.link.OskariLayerGroupLinkServiceMybatisImpl;
 import fi.nls.oskari.map.view.ViewService;
-import fi.nls.oskari.map.view.ViewServiceIbatisImpl;
+import fi.nls.oskari.map.view.AppSetupServiceMybatisImpl;
 import fi.nls.oskari.service.capabilities.CapabilitiesCacheService;
 import fi.nls.oskari.service.capabilities.CapabilitiesCacheServiceMybatisImpl;
 import fi.nls.oskari.wfs.WFSLayerConfigurationService;
 import fi.nls.oskari.wfs.WFSLayerConfigurationServiceIbatisImpl;
+import org.oskari.permissions.PermissionService;
+import org.oskari.permissions.PermissionServiceMybatisImpl;
 
 public class ServiceFactory {
 
@@ -26,28 +26,28 @@ public class ServiceFactory {
     private static ViewService viewService;
     private static OskariMapLayerGroupService oskariMapLayerGroupService;
     private static OskariLayerGroupLinkService layerGroupLinkService;
-    private static PermissionsService permissionsService;
+    private static PermissionService permissionsService;
     private static SearchService searchService;
     private static CapabilitiesCacheService capabilitiesCacheService;
     private static WFSLayerConfigurationService wfsLayerService;
 
     public static DataProviderService getDataProviderService() {
         if (dataProviderService == null) {
-            dataProviderService = new DataProviderServiceIbatisImpl();
+            dataProviderService = new DataProviderServiceMybatisImpl();
         }
         return dataProviderService;
     }
 
     public static OskariLayerService getMapLayerService() {
         if (mapLayerService == null) {
-            mapLayerService = new OskariLayerServiceIbatisImpl();
+            mapLayerService = new OskariLayerServiceMybatisImpl();
         }
         return mapLayerService;
     }
 
     public static ViewService getViewService() {
         if (viewService == null) {
-            viewService = new ViewServiceIbatisImpl();
+            viewService = new AppSetupServiceMybatisImpl();
         }
         return viewService;
     }
@@ -66,9 +66,9 @@ public class ServiceFactory {
         return layerGroupLinkService;
     }
 
-    public static PermissionsService getPermissionsService() {
+    public static PermissionService getPermissionsService() {
         if (permissionsService == null) {
-            permissionsService = new PermissionsServiceIbatisImpl();
+            permissionsService = new PermissionServiceMybatisImpl();
         }
         return permissionsService;
     }
