@@ -9,7 +9,6 @@ import fi.nls.oskari.cache.JedisManager;
 import fi.nls.oskari.control.*;
 import fi.nls.oskari.domain.map.DataProvider;
 import fi.nls.oskari.domain.map.OskariLayer;
-import fi.nls.oskari.domain.map.wfs.WFSLayerConfiguration;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.layer.DataProviderService;
@@ -22,10 +21,9 @@ import fi.nls.oskari.service.ServiceException;
 import fi.nls.oskari.service.capabilities.CapabilitiesCacheService;
 import fi.nls.oskari.service.capabilities.OskariLayerCapabilitiesHelper;
 import fi.nls.oskari.util.*;
+import org.oskari.admin.LayerCapabilitiesHelper;
 import org.oskari.log.AuditLog;
 import fi.nls.oskari.wfs.GetGtWFSCapabilities;
-import fi.nls.oskari.wfs.WFSLayerConfigurationService;
-import fi.nls.oskari.wfs.util.WFSParserConfigs;
 import fi.nls.oskari.wmts.WMTSCapabilitiesParser;
 import fi.nls.oskari.wmts.domain.WMTSCapabilities;
 import org.json.JSONArray;
@@ -55,11 +53,9 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
 
     private OskariLayerService mapLayerService = ServiceFactory.getMapLayerService();
     private ViewService viewService = ServiceFactory.getViewService();
-    private WFSLayerConfigurationService wfsLayerService = ServiceFactory.getWfsLayerService();
     private DataProviderService dataProviderService = ServiceFactory.getDataProviderService();
     private OskariLayerGroupLinkService layerGroupLinkService = ServiceFactory.getOskariLayerGroupLinkService();
     private CapabilitiesCacheService capabilitiesService = ServiceFactory.getCapabilitiesCacheService();
-    private WFSParserConfigs wfsParserConfigs = new WFSParserConfigs();
     private static final Logger LOG = LogFactory.getLogger(SaveLayerHandler.class);
 
     private static final String PARAM_LAYER_ID = "layer_id";
@@ -208,29 +204,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
                     layerGroupLinkService.insertAll(links);
                 }
 
-                //TODO: WFS spesific property update
-                if (OskariLayer.TYPE_WFS.equals(ml.getType())) {
-                    final WFSLayerConfiguration wfsl = wfsLayerService.findConfiguration(ml.getId());
-                    wfsl.setAttributes(ml.getAttributes());
-                    handleRequestToWfsLayer(params, wfsl);
-
-                    // TODO: WFS field management implementation
-                    // TODO: WFS2 spesific edits
-                    /* if(wfsl.getJobType() != null && wfsl.getJobType().equals(OSKARI_FEATURE_ENGINE)){
-                        handleFESpesificToWfsLayer(params, wfsl);
-                    }  */
-                    //wfsLayerService.update(wfsl);
-
-
-                    // Styles setup
-                    handleWfsLayerStyles(params, wfsl);
-
-
-                    // Remove old redis data of WFSLayer_xx, new wfs conf data is inserted automatically
-                    JedisManager.delAll(WFSLayerConfiguration.KEY + Integer.toString(ml.getId()));
-                    JedisManager.delAll(WFSLayerConfiguration.IMAGE_KEY + Integer.toString(ml.getId()));
-                }
-
                 LOG.debug(ml);
                 result.layerId = ml.getId();
                 return result;
@@ -248,7 +221,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
                 ml.setCreated(currentDate);
                 ml.setUpdated(currentDate);
                 result.capabilitiesUpdated = handleRequestToMapLayer(params, ml);
-                validateInsertLayer(params, ml);
 
                 int id = mapLayerService.insert(ml);
                 ml.setId(id);
@@ -271,22 +243,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
                     // update the name with the id for permission mapping
                     ml.setName(ml.getId() + "_group");
                     mapLayerService.update(ml);
-                }
-                // Wfs
-                if(OskariLayer.TYPE_WFS.equals(ml.getType())) {
-                    final WFSLayerConfiguration wfsl = new WFSLayerConfiguration();
-                    wfsl.setDefaults();
-                    wfsl.setLayerId(Integer.toString(id));
-                    wfsl.setAttributes(ml.getAttributes());
-                    handleRequestToWfsLayer(params, wfsl);
-                    if(wfsl.getJobType() != null && wfsl.getJobType().equals(OSKARI_FEATURE_ENGINE)){
-                        handleFESpesificToWfsLayer(params, wfsl);
-                    }
-                    int idwfsl = wfsLayerService.insert(wfsl);
-                    wfsl.setId(idwfsl);
-
-                    // Styles setup
-                    handleWfsLayerStyles(params, wfsl);
                 }
 
                 addPermissionsForRoles(ml,
@@ -469,128 +425,6 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         }
     }
 
-    private void handleRequestToWfsLayer(final ActionParameters params, WFSLayerConfiguration wfsl) throws ActionException {
-        wfsl.setGML2Separator(ConversionHelper.getBoolean(params.getHttpParam(PARAM_GML2_SEPARATOR), wfsl.isGML2Separator()));
-        wfsl.setGMLGeometryProperty(params.getHttpParam(PARAM_GML_GEOMETRY_PROPERTY));
-        wfsl.setGMLVersion(params.getHttpParam(PARAM_GML_VERSION));
-        wfsl.setSRSName(params.getHttpParam(PARAM_SRS_NAME));
-        wfsl.setWFSVersion(params.getHttpParam(PARAM_WFS_VERSION, params.getHttpParam(PARAM_VERSION)));
-        wfsl.setFeatureElement(params.getHttpParam(PARAM_FEATURE_ELEMENT));
-        wfsl.setFeatureNamespace(params.getHttpParam(PARAM_FEATURE_NAMESPACE));
-        wfsl.setFeatureNamespaceURI(params.getHttpParam(PARAM_FEATURE_NAMESCAPE_URI));
-        wfsl.setFeatureParamsLocales(params.getHttpParam(PARAM_FEATURE_PARAMS_LOCALES));
-        wfsl.setFeatureType(params.getHttpParam(PARAM_FEATURE_TYPE));
-        wfsl.setGeometryNamespaceURI(params.getHttpParam(PARAM_GEOMETRY_NAMESPACE_URI));
-        wfsl.setGeometryType(params.getHttpParam(PARAM_GEOMETRY_TYPE));
-        wfsl.setGetFeatureInfo(ConversionHelper.getBoolean(params.getHttpParam(PARAM_GET_FEATURE_INFO), wfsl.isGetFeatureInfo()));
-        wfsl.setGetHighlightImage(ConversionHelper.getBoolean(params.getHttpParam(PARAM_GET_HIGHLIGHT_IMAGE), wfsl.isGetHighlightImage()));
-        wfsl.setGetMapTiles(ConversionHelper.getBoolean(params.getHttpParam(PARAM_GET_MAP_TILES), wfsl.isGetMapTiles()));
-        wfsl.setLayerName(params.getHttpParam(PARAM_LAYER_NAME));
-        wfsl.setMaxFeatures(ConversionHelper.getInt(params.getHttpParam(PARAM_MAX_FEATURES), wfsl.getMaxFeatures()));
-        wfsl.setOutputFormat(params.getHttpParam(PARAM_OUTPUT_FORMAT));
-        wfsl.setSelectedFeatureParams(params.getHttpParam(PARAM_SELECTED_FEATURE_PARAMS));
-        wfsl.setTileBuffer(params.getHttpParam(PARAM_TILE_BUFFER));
-        wfsl.setTileRequest(ConversionHelper.getBoolean(params.getHttpParam(PARAM_TILE_REQUEST), wfsl.isTileRequest()));
-        wfsl.setJobType(params.getHttpParam(PARAM_JOB_TYPE));
-    }
-
-    private void handleFESpesificToWfsLayer(  final ActionParameters params, WFSLayerConfiguration wfsl) throws ActionException, ServiceException {
-        if (wfsl == null) {
-            return;
-        }
-
-        if(!wfsl.getWFSVersion().equals(WFS1_1_0_VERSION)) {
-            wfsl.setRequestTemplate(params.getHttpParam(PARAM_REQUEST_TEMPLATE));
-            wfsl.setResponseTemplate(params.getHttpParam(PARAM_RESPONSE_TEMPLATE));
-            wfsl.setParseConfig(params.getHttpParam(PARAM_PARSE_CONFIG));
-            wfsl.setTemplateName(params.getHttpParam(PARAM_TEMPLATE_NAME));
-            wfsl.setTemplateType(params.getHttpParam(PARAM_TEMPLATE_TYPE));
-            wfsl.setTemplateDescription("FE parser model - wfs version : " + wfsl.getWFSVersion());
-            Map<String, String> model = new HashMap<String, String>();
-
-            model.put("name", wfsl.getFeatureNamespace() + ":" + wfsl.getFeatureElement());
-            model.put("description", wfsl.getTemplateDescription());
-            model.put("type", wfsl.getTemplateType());
-            model.put("request_template", wfsl.getRequestTemplate());
-            model.put("response_template", wfsl.getResponseTemplate());
-            model.put("parse_config", wfsl.getParseConfig().toString());
-
-            int model_id = wfsLayerService.insertTemplateModel(model);
-
-            wfsl.setTemplateModelId(model_id);
-        }
-        else {
-            //TODO: fe save config support for wfs 1.1.0
-            wfsl.setJobType(OSKARI_FEATURE_ENGINE);
-            wfsl.setTileBuffer("{ \"default\" : 1, \"oskari_custom\" : 1}");;
-        }
-    }
-
-    /**
-     *  Inserts/updates sld style links to single wfs layer
-     * @param params
-     * @param wfsl
-     * @throws ActionException
-     * @throws ServiceException
-     */
-    private void handleWfsLayerStyles(final ActionParameters params, WFSLayerConfiguration wfsl) throws ActionException, ServiceException {
-
-
-        if (wfsl != null && params.getHttpParam(PARAM_STYLE_SELECTION) != null) {
-            JSONObject selectedStyles = JSONHelper.createJSONObject(params.getHttpParam(PARAM_STYLE_SELECTION));
-            JSONArray styles = JSONHelper.getJSONArray(selectedStyles, "selectedStyles");
-            List<Integer> sldIds = new ArrayList<Integer>();
-            for (int i = 0; i < styles.length(); i++) {
-                JSONObject stylelnk = JSONHelper.getJSONObject(styles, i);
-                int lnk = ConversionHelper.getInt(JSONHelper.getStringFromJSON(stylelnk, "id", "0"), 0);
-                if (lnk != 0) {
-                    sldIds.add(lnk);
-                }
-
-            }
-            //TODO: define a case to remove all styles  and update single style
-            if (sldIds.size() > 0) {
-                // Removes old links and insert new ones
-                List<Integer> ids = wfsLayerService.insertSLDStyles(wfsl.getId(), sldIds);
-            }
-        }
-    }
-
-    /**
-     * Check before maplayer insert that all data is valid for specific layer types
-     *
-     * @param params
-     * @param ml
-     * @throws ActionException
-     */
-    private void validateInsertLayer(final ActionParameters params, OskariLayer ml) throws ActionException {
-
-        if (!OskariLayer.TYPE_WFS.equals(ml.getType())) {
-            return;
-        }
-        if(params.getHttpParam(PARAM_JOB_TYPE) != null && params.getHttpParam(PARAM_JOB_TYPE).equals(OSKARI_FEATURE_ENGINE) ) {
-            try {
-
-                JSONArray feaconf = wfsParserConfigs.getFeatureTypeConfig(params.getHttpParam(PARAM_FEATURE_NAMESPACE) + ":" + params.getHttpParam(PARAM_FEATURE_ELEMENT));
-                if (feaconf == null) {
-                    feaconf = wfsParserConfigs.getFeatureTypeConfig("default");
-                }
-
-                if (feaconf == null) {
-                    throw new ActionException(ERROR_FE_PARSER_CONFIG_MISSING);
-                }
-            } catch (Exception e) {
-                if (e instanceof ActionException) {
-                    throw (ActionException) e;
-                } else {
-                    throw new ActionException(ERROR_FE_PARSER_CONFIG_MISSING, e);
-                }
-
-            }
-        }
-
-    }
-
     private boolean handleWMSSpecific(final ActionParameters params, OskariLayer ml, Set<String> systemCRSs) {
         // Do NOT modify the 'xslt' parameter
         HttpServletRequest request = params.getRequest();
@@ -618,7 +452,7 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
             String currentCrs = params.getHttpParam(PARAM_SRS_NAME, ml.getSrs_name());
             String data = CapabilitiesCacheService.getFromService(ml);
             WMTSCapabilities caps = WMTSCapabilitiesParser.parseCapabilities(data);
-            OskariLayerCapabilitiesHelper.setPropertiesFromCapabilitiesWMTS(caps, ml, currentCrs, systemCRSs);
+            OskariLayerCapabilitiesHelper.setPropertiesFromCapabilitiesWMTS(caps, ml, systemCRSs);
             capabilitiesService.save(ml, data);
             return true;
         } catch (Exception ex) {
@@ -630,41 +464,18 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
     private void handleWFSSpecific(final ActionParameters params, OskariLayer ml, Set<String> systemCRSs) throws ActionException {
         // These are only in insert
         ml.setSrs_name(params.getHttpParam(PARAM_SRS_NAME, ml.getSrs_name()));
-        ml.setVersion(params.getHttpParam(PARAM_WFS_VERSION,ml.getVersion()));
+        ml.setVersion(params.getHttpParam(PARAM_VERSION, params.getHttpParam(PARAM_WFS_VERSION, ml.getVersion())));
 
-        // Put manual Refresh mode to attributes if true
-        JSONObject attributes = ml.getAttributes();
-        attributes.remove(PARAM_MANUAL_REFRESH);
-        if(ConversionHelper.getOnOffBoolean(params.getHttpParam(PARAM_MANUAL_REFRESH, "off"), false)){
-            JSONHelper.putValue(attributes, PARAM_MANUAL_REFRESH, true);
-            ml.setAttributes(attributes);
-        }
-        // Put resolveDepth mode to attributes if true (solves xlink:href links in GetFeature)
-        attributes = ml.getAttributes();
-        attributes.remove(PARAM_RESOLVE_DEPTH);
-        if(ConversionHelper.getOnOffBoolean(params.getHttpParam(PARAM_RESOLVE_DEPTH, "off"), false)){
-            JSONHelper.putValue(attributes, PARAM_RESOLVE_DEPTH, true);
-            ml.setAttributes(attributes);
-        }
-
-        // Get supported projections
-
-        Set<String> crss = new HashSet<>();
-        if (WFS3_0_0_VERSION.equals(ml.getVersion())) {
-            try {
+        try {
+            if (WFS3_0_0_VERSION.equals(ml.getVersion())) {
                 WFS3Service service = WFS3Service.fromURL(ml.getUrl(), ml.getUsername(), ml.getPassword());
-                crss = service.getSupportedEpsgCodes(ml.getName());
-            } catch (Exception e) {
-                LOG.warn("Couldn't get supported projections for WFS3 layer:", ml.getName(), e.getMessage());
+                OskariLayerCapabilitiesHelper.setPropertiesFromCapabilitiesWFS(service, ml, systemCRSs);
+            } else {
+                LayerCapabilitiesHelper.updateCapabilities(ml);
             }
-        } else {
-            Map<String, Object> capa = GetGtWFSCapabilities.getGtDataStoreCapabilities(
-                    ml.getUrl(), ml.getVersion(), ml.getUsername(), ml.getPassword(), ml.getSrs_name());
-            crss = GetGtWFSCapabilities.parseProjections(capa, ml.getName());
+        } catch (Exception e) {
+            LOG.warn("Couldn't update capabilities for WFS (" + ml.getVersion() + ") layer:", ml.getName(), e.getMessage());
         }
-        JSONObject capabilities = new JSONObject();
-        JSONHelper.put(capabilities, "srs", new JSONArray(crss));
-        ml.setCapabilities(capabilities);
         ml.setCapabilitiesLastUpdated(new Date());
     }
 
@@ -680,7 +491,7 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
     }
 
     private void addPermissionsForRoles(final OskariLayer ml,
-                                        final Set<Integer> externalIds,
+                                        final Set<Integer> viewRoleIds,
                                         final Set<Integer> publishRoleIds,
                                         final Set<Integer> downloadRoleIds,
                                         final Set<Integer> viewEmbeddedRoleIds) {
@@ -688,16 +499,11 @@ public class SaveLayerHandler extends AbstractLayerAdminHandler {
         res.setType(ResourceType.maplayer);
         res.setMapping(Integer.toString(ml.getId()));
         // insert permissions
-        LOG.debug("Adding permission", PermissionType.VIEW_LAYER, "for roles:", externalIds);
-        for (int externalId : externalIds) {
+        LOG.debug("Adding permission", PermissionType.VIEW_LAYER, "for roles:", viewRoleIds);
+        for (int externalId : viewRoleIds) {
             Permission permission = new Permission();
             permission.setRoleId(externalId);
             permission.setType(PermissionType.VIEW_LAYER);
-            res.addPermission(permission);
-
-            permission = new Permission();
-            permission.setRoleId(externalId);
-            permission.setType(PermissionType.EDIT_LAYER);
             res.addPermission(permission);
         }
 

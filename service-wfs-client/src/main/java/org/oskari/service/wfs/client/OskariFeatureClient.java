@@ -20,7 +20,6 @@ public class OskariFeatureClient {
     protected static final String PROPERTY_NATIVE_SRS = "oskari.native.srs";
     protected static final String ERR_REPOJECTION_FAIL = "Reprojection failed";
     protected static final String ERR_NATIVE_SRS_DECODE_FAIL = "Failed to decode Native CRS";
-    protected static final String PROPERTY_FORCE_GML = "forceGML";
 
     private OskariWFSClient wfsClient;
     private CoordinateReferenceSystem nativeCRS;
@@ -42,7 +41,7 @@ public class OskariFeatureClient {
     }
 
     public SimpleFeatureCollection getFeatures(String id, OskariLayer layer, ReferencedEnvelope bbox,
-            CoordinateReferenceSystem targetCRS, Optional<UserLayerService> processor) throws ServiceRuntimeException {
+            CoordinateReferenceSystem targetCRS, Optional<UserLayerService> processor) {
         CoordinateReferenceSystem nativeCRS = getNativeCRS();
         boolean needsTransform = !CRS.equalsIgnoreMetadata(nativeCRS, targetCRS);
 
@@ -72,23 +71,12 @@ public class OskariFeatureClient {
         }
     }
 
-
     private SimpleFeatureCollection getFeaturesNoTransform(String id, OskariLayer layer,
             ReferencedEnvelope bbox, CoordinateReferenceSystem crs,
-            Optional<UserLayerService> processor) throws ServiceRuntimeException {
-        String endPoint = layer.getUrl();
-        String version = layer.getVersion();
-        String typeName = layer.getName();
-        String user = layer.getUsername();
-        String pass = layer.getPassword();
-        // TODO: Figure out the maxFeatures from the layer
-        int maxFeatures = 10000;
-
+            Optional<UserLayerService> processor) {
         Filter filter = processor.map(proc -> proc.getWFSFilter(id, bbox)).orElse(null);
 
-        boolean forceGML =  layer.getAttributes().optBoolean(PROPERTY_FORCE_GML, false);
-        SimpleFeatureCollection sfc = wfsClient.getFeatures(endPoint, version, user, pass, typeName, bbox, crs, maxFeatures, filter, forceGML);
-
+        SimpleFeatureCollection sfc = wfsClient.getFeatures(layer, bbox, crs, filter);
 
         if (processor.isPresent()) {
             try {
@@ -100,5 +88,4 @@ public class OskariFeatureClient {
 
         return sfc;
     }
-
 }

@@ -33,8 +33,18 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
     @Override
     public void update() {
         List<StatisticalIndicator> indicators = indicatorsParser.parse(getSource().getLayers());
+        int skippedIndicators = 0;
         for (StatisticalIndicator ind : indicators) {
+            if(!ind.getDataModel().isHasRegionInfo()) {
+                // skip indicators without region info
+                skippedIndicators++;
+                continue;
+            }
             onIndicatorProcessed(ind);
+        }
+        if (skippedIndicators > 0) {
+            LOG.info("Updated datasource:", config.getUrl(), "with", skippedIndicators,
+                    "of", indicators.size(), "indicators skipped for not having region info.");
         }
     }
 
@@ -114,11 +124,11 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
         String indicatorId = indicator.getId();
         if(config.hasIndicatorKey()) {
             // indicatorId will be something.px::[value of indicatorKey]
-            int separatorIndex = indicatorId.lastIndexOf("::");
+            int separatorIndex = indicatorId.lastIndexOf(PxwebConfig.ID_SEPARATOR);
             if(separatorIndex == -1) {
                 throw new ServiceRuntimeException("Unidentified indicator id: " + indicatorId);
             }
-            String indicatorSelector = indicatorId.substring(separatorIndex + 2);
+            String indicatorSelector = indicatorId.substring(separatorIndex + PxwebConfig.ID_SEPARATOR.length());
             indicatorId = indicatorId.substring(0, separatorIndex);
             params.addDimension(new StatisticalIndicatorDataDimension(config.getIndicatorKey(), indicatorSelector));
         }
@@ -181,7 +191,9 @@ public class PxwebStatisticalDatasourcePlugin extends StatisticalDatasourcePlugi
 
     private String createUrl(String baseUrl, String pathId) {
         if(!baseUrl.endsWith(".px")) {
-            return IOHelper.fixPath(baseUrl + "/" + IOHelper.urlEncode(pathId));
+            // URLencode id and replace any encoded / in path back from %2F
+            // Pxweb doesn't seem to like spaces as + so use payload encoding instead to change spaces to %20
+            return IOHelper.fixPath(baseUrl + "/" + IOHelper.urlEncodePayload(pathId).replace("%2F", "/"));
         }
         return baseUrl;
     }

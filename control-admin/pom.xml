@@ -6,7 +6,7 @@
 	<parent>
 		<groupId>fi.nls.oskari</groupId>
 		<artifactId>oskari-parent</artifactId>
-        <version>1.53.1</version>
+        <version>1.55.1</version>
 	</parent>
 
     <groupId>fi.nls.oskari.service</groupId>
@@ -35,6 +35,10 @@
         <dependency>
             <groupId>org.oskari</groupId>
             <artifactId>service-capabilities-update</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>fi.nls.oskari.service</groupId>
+            <artifactId>oskari-control-base</artifactId>
         </dependency>
         <dependency>
             <groupId>javax.servlet</groupId>

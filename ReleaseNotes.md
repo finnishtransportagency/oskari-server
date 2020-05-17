@@ -1,5 +1,79 @@
 # Release Notes
 
+## 1.55.1
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/24?closed=1
+
+- Added bundle registrations for new bundles: admin-layereditor and layerlist
+- Fixed metadata id and legend image handling on server-side for admin-layereditor
+- Fixed user content/temporary features input for analysis
+- Additional permissions checks added for analysis
+
+## 1.55.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/21?closed=1
+
+WFS integrations:
+- Improvements for error handling on WFS integrations (missing schemas and handling unexpected output formats etc)
+- Transport related code has been mostly removed from the server code base and will continue to be removed
+- Database tables used by transport have been removed with relevant content migrated: https://github.com/oskariorg/oskari-server/pull/509
+
+Layer admininistration:
+- new helpers and action route (LayerAdmin) added for the new map layer admin functionality UI (Old ones will be deprecated and removed in a future release)
+- Adding layers with LayerHelper from Flyway migrations now uses the same JSON-format, validations and functionality as the new admin UI
+- We will continue refining these so they are subject to change in the near future still (at least capabilities handling needs some cleanup)
+- GetHierarchicalMapLayerGroups action route can now be used to fetch layers based on id (instead of always returning whole set of layers)
+- GetAllRolesAndPermissionTypes action route has been renamed LayerAdminMetadata
+
+Imported datasets (userlayer):
+- GPX imports are now read using custom parser implemented in Java (working towards removing an extra step of installing GDAL for Oskari-server)
+- Error handling improved for invalid userlayer imports, inconsistent data and styling improvements
+- Feature attributes are now sorted based on the imported dataset
+
+Statistical data integrations:
+- Multiple improvements for parsing statistical data from PXWeb data sources
+- Improvements on handling cached data for indicator lists
+
+Technical changes for enabling server clustering:
+- Allow persistent user sessions with Redis. Configuration: https://github.com/oskariorg/oskari-server/pull/491
+- Add health and status urls with customizable health checks: https://github.com/oskariorg/oskari-server/pull/493
+
+Other:
+- Bundle registrations and link param handlers for 3D related bundles added (enabling apps to use these more easily)
+- Fix properties configuration and added some URL-parsing methods for IOHelper
+- Layer coverage information improvements. We identified some problem points and added error handling.
+- Unnecessary logging removed
+- Removed dependencies that were no longer used
+- Updated libraries
+
+## 1.54.1
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/22?closed=1
+
+Fixes an issue with permissions handling and removes all EDIT_LAYER permissions from database. If you ARE using this permission
+you can skip the migration but its heavily recommended to run it. All layers with VIEW_LAYER permission have had this permission
+so it's unlikely that it is used properly at this moment.
+
+## 1.54.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/19?closed=1
+
+- Fixed an issue where cached data was not flushed after changes in permissions
+- Improved background processing for statistical maps functionality
+- The forced migration to the new WFS-system has been added (transport is no longer used)
+- Fixed an issue with filters in the new WFS-system that caused problems with GeoServer stability
+- Added support for arcs and surface geometries on the new WFS-system
+- Improved parsing for WFS-services that use mixed geometry types
+- Reduced logging for WFS-system on common error scenarios
+- Fixed an issue with user content label styling
+- Fixed an issue in data provider renaming
+- Enabled setup-scripts to insert appsetups that can be loaded with id-reference (instead of uuid)
+- Added a default schedule for background capabilities update worker (so configuring automatic updates as admin actually does something)
+- Added new action routes to get instance roles, permission types and layers in preparation for new admin functionality
+
+Note! The transport code has not been removed from this release but it hasn't been tested either.
+If you must and are willing to put in the effort to go around the forced migration you can try using it but know that it will be removed in the near future.
+
 ## 1.53.1
 
 For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/20?closed=1

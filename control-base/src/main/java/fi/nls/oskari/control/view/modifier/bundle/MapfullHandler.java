@@ -19,6 +19,7 @@ import fi.nls.oskari.myplaces.MyPlacesService;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.JSONHelper;
+import fi.nls.oskari.util.PropertyUtil;
 import fi.nls.oskari.view.modifier.ModifierException;
 import fi.nls.oskari.view.modifier.ModifierParams;
 import fi.nls.oskari.view.modifier.ViewModifier;
@@ -61,6 +62,15 @@ public class MapfullHandler extends BundleHandler {
     private static final String KEY_PLUGINS = "plugins";
     public static final String KEY_CONFIG = "config";
     private static final String KEY_BASELAYERS = "baseLayers";
+    private static final String KEY_CENTER_MAP_AUTOMATICALLY = "centerMapAutomatically";
+
+    private static final String KEY_TERRAIN = "terrain";
+    private static final String KEY_TERRAIN_TOKEN = "ionAccessToken";
+    private static final String KEY_TERRAIN_ASSET = "ionAssetId";
+    private static final String KEY_TERRAIN_URL = "providerUrl";
+    private static final int TERRAIN_ASSET = PropertyUtil.getOptional("oskari.map.terrain.asset", -1);
+    private static final String TERRAIN_TOKEN = PropertyUtil.getOptional("oskari.map.terrain.token");
+    private static final String TERRAIN_URL = PropertyUtil.getOptional("oskari.map.terrain.url");
 
     private static final String PREFIX_MYPLACES = "myplaces_";
     private static final String PREFIX_ANALYSIS = "analysis_";
@@ -70,6 +80,8 @@ public class MapfullHandler extends BundleHandler {
     private static final String PLUGIN_LAYERSELECTION = "Oskari.mapframework.bundle.mapmodule.plugin.LayerSelectionPlugin";
     private static final String PLUGIN_GEOLOCATION = "Oskari.mapframework.bundle.mapmodule.plugin.GeoLocationPlugin";
     public static final String PLUGIN_WFSVECTORLAYER = "Oskari.wfsvector.WfsVectorLayerPlugin";
+    private static final String PLUGIN_MYLOCATION = "Oskari.mapframework.bundle.mapmodule.plugin.MyLocationPlugin";
+
     public static final String EPSG_PROJ4_FORMATS = "epsg_proj4_formats.json";
 
     private static MyPlacesService myPlaceService = null;
@@ -137,6 +149,8 @@ public class MapfullHandler extends BundleHandler {
         } catch (Exception e) {
             LOGGER.error(e, "Unable to overwrite layers");
         }
+        // init terrain profile from properties if given
+        setTerrainFromProperties (mapfullConfig);
 
         // dummyfix: because migration tool added layer selection to all migrated maps
         // remove it from old published maps if only one layer is selected
@@ -147,6 +161,7 @@ public class MapfullHandler extends BundleHandler {
         if (params.isLocationModified()) {
             LOGGER.info("locationModifiedByParams -> disabling GeoLocationPlugin");
             removePlugin(PLUGIN_GEOLOCATION, mapfullConfig);
+            removeMyLocationPluginAutoCenter(mapfullConfig);
         }
 
         pluginHandlers.entrySet().stream().forEach(entry -> {
@@ -540,6 +555,17 @@ public class MapfullHandler extends BundleHandler {
         return null;
     }
 
+    private void removeMyLocationPluginAutoCenter(final JSONObject mapfullConfig) {
+        JSONObject plugin = getPlugin(PLUGIN_MYLOCATION, mapfullConfig);
+        if (plugin == null) {
+            return;
+        }
+        JSONObject config = plugin.optJSONObject(KEY_CONFIG);
+        if(config != null && config.has(KEY_CENTER_MAP_AUTOMATICALLY)) {
+            config.remove(KEY_CENTER_MAP_AUTOMATICALLY);
+        }
+    }
+
     private void removePlugin(final String pluginClassName,
                               final JSONObject mapfullConfig) {
 
@@ -594,6 +620,27 @@ public class MapfullHandler extends BundleHandler {
             LOGGER.error("Problem trying to figure out whether "
                     + PLUGIN_LAYERSELECTION + " should be removed.", jsonex);
         }
+    }
+    private void setTerrainFromProperties (final JSONObject mapfullConfig) {
+        if (TERRAIN_URL == null && TERRAIN_TOKEN == null) {
+            return;
+        }
+        JSONObject options = mapfullConfig.optJSONObject(KEY_MAP_OPTIONS);
+        if (options == null) {
+            options = new JSONObject();
+            JSONHelper.putValue(mapfullConfig, KEY_MAP_OPTIONS, options);
+        }
+        JSONObject terrain = new JSONObject();
+        if (TERRAIN_URL != null) {
+            JSONHelper.putValue(terrain, KEY_TERRAIN_URL, TERRAIN_URL);
+        }
+        if (TERRAIN_TOKEN != null) {
+            JSONHelper.putValue(terrain, KEY_TERRAIN_TOKEN, TERRAIN_TOKEN);
+            if (TERRAIN_ASSET != -1) {
+                JSONHelper.putValue(terrain, KEY_TERRAIN_ASSET, TERRAIN_ASSET);
+            }
+        }
+        JSONHelper.putValue(options, KEY_TERRAIN, terrain);
     }
 
     void epsgInit() {
