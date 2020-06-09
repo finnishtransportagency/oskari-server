@@ -1157,16 +1157,6 @@
             <url>https://oskari.org/nexus/content/repositories/snapshots/</url>
         </repository>
         <repository>
-            <id>osgeo_geotools</id>
-            <name>OSGeo GeoTools repository</name>
-            <url>https://repo.osgeo.org/repository/geotools-releases/</url>
-        </repository>
-        <repository>
-        <id>osgeo_geoserver</id>
-            <name>OSGeo GeoServer repository</name>
-            <url>https://repo.osgeo.org/repository/Geoserver-releases/</url>
-        </repository>
-        <repository>
             <id>central</id>
             <name>Central Repository</name>
             <url>https://repo.maven.apache.org/maven2</url>
@@ -1182,8 +1172,10 @@
         </repository>
         <repository>
             <id>osgeo</id>
-            <name>OSGeo repository</name>
+            <name>OSGeo Release Repository</name>
             <url>https://repo.osgeo.org/repository/release/</url>
+            <snapshots><enabled>false</enabled></snapshots>
+            <releases><enabled>true</enabled></releases>
         </repository>
         <repository>
             <id>geosolutions</id>
