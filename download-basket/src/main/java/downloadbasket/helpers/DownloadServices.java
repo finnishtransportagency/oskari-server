@@ -55,8 +55,7 @@ public class DownloadServices {
 	public String loadZip(LoadZipDetails ldz, Locale locale) throws IOException {
 		String realFileName = null;
 		HttpURLConnection conn = null;
-		String croppingUsername = PropertyUtil.get("oskari.wfs.cropping.username");
-		String croppingPassword = PropertyUtil.get("oskari.wfs.cropping.password");
+
 		try {
 			LOGGER.debug("WFS URL: " + ldz.getWFSUrl());
 
@@ -71,7 +70,7 @@ public class DownloadServices {
 			conn = (HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 			conn.setConnectTimeout(600000);
-			IOHelper.setupBasicAuth(conn, croppingUsername, croppingPassword);
+
 			conn.connect();
 
 			String filename = UUID.randomUUID().toString();
