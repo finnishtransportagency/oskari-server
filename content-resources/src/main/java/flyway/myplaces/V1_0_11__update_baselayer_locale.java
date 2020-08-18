@@ -15,5 +15,6 @@ public class V1_0_11__update_baselayer_locale implements JdbcMigration {
         OskariLayer layer = LayerHelper.getLayerWithName(NAME);
         layer.setLocale(JSONHelper.createJSONObject(LOCALE));
         LayerHelper.update(layer);
+        
     }
 }
