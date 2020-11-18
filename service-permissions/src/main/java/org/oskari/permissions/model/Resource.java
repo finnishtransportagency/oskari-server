@@ -108,6 +108,9 @@ public class Resource {
         return hasPermission(role, permissionType.name());
     }
     public boolean hasPermission(Role role, String permissionType) {
+        if (role == null) {
+            return false;
+        }
         return hasRolePermission(role.getId(), permissionType);
     }
 
@@ -126,6 +129,10 @@ public class Resource {
 
     public void removePermissionsOfType(String permissionType, PermissionExternalType idType, int externalId) {
         getPermissions().removeIf(p -> p.isOfType(permissionType) && p.getExternalType().equals(idType) && p.getExternalId() == externalId);
+    }
+
+    public void removePermissionsForExternalType(PermissionExternalType idType, int externalId) {
+        getPermissions().removeIf(p -> p.getExternalType().equals(idType) && p.getExternalId() == externalId);
     }
 
     public void removePermissionsFromAllUsers(String permissionType) {

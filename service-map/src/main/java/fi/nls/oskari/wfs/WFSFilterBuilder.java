@@ -1,13 +1,13 @@
 package fi.nls.oskari.wfs;
 
-import com.vividsolutions.jts.geom.Geometry;
+import org.locationtech.jts.geom.Geometry;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.geometry.WKTHelper;
 import fi.nls.oskari.util.JSONHelper;
 import org.geotools.factory.CommonFactoryFinder;
-import org.geotools.xml.Configuration;
-import org.geotools.xml.Encoder;
+import org.geotools.xsd.Configuration;
+import org.geotools.xsd.Encoder;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Date: 6.8.2013
@@ -481,18 +482,14 @@ public class WFSFilterBuilder {
     }
 
     public static String parseProperties(List<String> props, String ns, String geom_prop) {
-        String query = "";
-        for (String prop : props) {
-            String temp = PROPERTY_TEMPLATE.replace(PROPERTY_PROPERTY, ns + ":"
-                    + prop);
-            query = query + temp;
+        if (props == null || props.isEmpty()) {
+            return "";
         }
-        if(!query.isEmpty()) {
-            // geometry is not retreaved, if this is lacking
-            String temp = PROPERTY_TEMPLATE.replace(PROPERTY_PROPERTY, geom_prop);
-            query = query + temp;
-        }
+        String query = props.stream()
+                .map(featureAttribute -> PROPERTY_TEMPLATE.replace(PROPERTY_PROPERTY, ns + ":" + featureAttribute))
+                .collect(Collectors.joining());
 
-        return query;
+        // if we are filtering out a given set of featureAttributes -> we want to include geometry to the query as well
+        return query + PROPERTY_TEMPLATE.replace(PROPERTY_PROPERTY, geom_prop);
     }
 }

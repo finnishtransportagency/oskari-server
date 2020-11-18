@@ -9,7 +9,6 @@ import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.map.geometry.ProjectionHelper;
 import fi.nls.oskari.search.channel.SearchChannel;
-import fi.nls.oskari.util.ConversionHelper;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
@@ -20,7 +19,7 @@ import org.json.JSONObject;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
+import java.net.HttpURLConnection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -58,7 +57,7 @@ public class OpenStreetMapSearchChannel extends SearchChannel {
         params.put("accept-language", searchCriteria.getLocale());
         int maxResults = getMaxResults(searchCriteria.getMaxResults());
         if (maxResults > 0) {
-            params.put("limit", Integer.toString(maxResults));
+            params.put("limit", Integer.toString(maxResults + 1));
         }
         params.put("q", searchCriteria.getSearchString());
 
@@ -78,8 +77,9 @@ public class OpenStreetMapSearchChannel extends SearchChannel {
         }
 
         String url = getUrl(searchCriteria);
-
-        String data = IOHelper.readString(getConnection(url));
+        HttpURLConnection connection = getConnection(url);
+        IOHelper.addIdentifierHeaders(connection);
+        String data = IOHelper.readString(connection);
         log.debug("DATA: " + data);
         return JSONHelper.createJSONArray(data);
     }
@@ -111,10 +111,17 @@ public class OpenStreetMapSearchChannel extends SearchChannel {
                 item.setLocationTypeCode(JSONHelper.getStringFromJSON(dataItem, "class", ""));
                 item.setType(JSONHelper.getStringFromJSON(dataItem, "class", ""));
                 item.setRegion(JSONHelper.getStringFromJSON(address, "city", ""));
+                final double lat = dataItem.optDouble("lat");
+                final double lon = dataItem.optDouble("lon");
 
-                item.setLon(JSONHelper.getStringFromJSON(dataItem, "lon", ""));
-                item.setLat(JSONHelper.getStringFromJSON(dataItem, "lat", ""));
+                // convert to map projection
+                final Point point = ProjectionHelper.transformPoint(lon, lat, sourceCrs, targetCrs);
+                if (point == null) {
+                    continue;
+                }
 
+                item.setLon(point.getLon());
+                item.setLat(point.getLat());
                 // FIXME: add more automation on result rank scaling
                 try {
                     item.setRank(100 * (int) Math.round(dataItem.getDouble("importance")));
@@ -122,21 +129,6 @@ public class OpenStreetMapSearchChannel extends SearchChannel {
                     item.setRank(0);
                 }
                 searchResultList.addItem(item);
-                // convert to map projection
-                final Point point = ProjectionHelper.transformPoint(
-                        ConversionHelper.getDouble(item.getLon(), -1),
-                        ConversionHelper.getDouble(item.getLat(), -1),
-                        sourceCrs,
-                        targetCrs);
-                if (point == null) {
-                    item.setLon("");
-                    item.setLat("");
-                    continue;
-                }
-
-                item.setLon(point.getLon());
-                item.setLat(point.getLat());
-
             }
         } catch (Exception e) {
             log.error(e, "Failed to search locations from register of OpenStreetMap");

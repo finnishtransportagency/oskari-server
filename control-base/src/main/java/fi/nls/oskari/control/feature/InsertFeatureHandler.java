@@ -1,11 +1,8 @@
 package fi.nls.oskari.control.feature;
 
 import fi.nls.oskari.annotation.OskariActionRoute;
-import fi.nls.oskari.control.ActionDeniedException;
 import fi.nls.oskari.control.ActionException;
 import fi.nls.oskari.control.ActionParameters;
-import fi.nls.oskari.control.ActionParamsException;
-import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.Feature;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
@@ -13,7 +10,6 @@ import fi.nls.oskari.log.Logger;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.ResponseHelper;
 import fi.nls.oskari.util.XmlHelper;
-import org.apache.http.client.ClientProtocolException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,9 +26,6 @@ import javax.xml.stream.XMLStreamException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @OskariActionRoute("InsertFeature")
@@ -53,10 +46,9 @@ public class InsertFeatureHandler extends AbstractFeatureHandler {
             for (int i = 0; i < paramFeatures.length(); i++) {
                 JSONObject featureJSON = paramFeatures.getJSONObject(i);
                 OskariLayer layer = getLayer(featureJSON.optString("layerId"));
-
                 final String wfstMessage = createWFSTMessage(featureJSON);
                 LOG.debug("Inserting feature to service at", layer.getUrl(), "with payload", wfstMessage);
-                final String responseString = postPayload(layer, wfstMessage);
+                final String responseString = postPayload(layer.getUsername(), layer.getPassword(), wfstMessage, getURLForNamespace(layer.getName(),layer.getUrl()));
                 updatedFeatureIds.put(parseFeatureIdFromResponse(responseString));
             }
 
@@ -111,9 +103,6 @@ public class InsertFeatureHandler extends AbstractFeatureHandler {
             NodeList res = doc.getElementsByTagName("ogc:FeatureId");
             Element res3 = (Element) res.item(0);
             return res3.getAttribute("fid");
-        } catch (ClientProtocolException ex) {
-            LOG.error(ex, "Geoserver connection error");
-            throw new ActionException("Geoserver connection error", ex);
         } catch (ParserConfigurationException ex) {
             LOG.error(ex, "Parser configuration error");
             throw new ActionException("Parser configuration error", ex);
@@ -126,4 +115,3 @@ public class InsertFeatureHandler extends AbstractFeatureHandler {
         }
     }
 }
-

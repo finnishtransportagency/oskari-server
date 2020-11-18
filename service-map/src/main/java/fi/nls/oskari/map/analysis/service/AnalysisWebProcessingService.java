@@ -152,15 +152,17 @@ public class AnalysisWebProcessingService {
      * @throws ServiceException
      */
     public String requestWFS2(final String wfsUrl, final String request_data, final String user, final String pw) throws ServiceException {
-        String response = null;
-        try {
-            // GetFeature response
-            response = IOHelper.httpRequestAction(wfsUrl, request_data,user, pw, null, null, "application/json");
 
-        } catch (Exception e) {
+        try {
+            final HttpURLConnection conn = IOHelper.getConnection(wfsUrl, user, pw);
+            IOHelper.writeHeader(conn, IOHelper.HEADER_ACCEPT, "application/json");
+            if (request_data != null && !request_data.isEmpty()) {
+                IOHelper.post(conn, "application/xml", request_data);
+            }
+            return IOHelper.readString(conn.getInputStream());
+        } catch (IOException e) {
             throw new ServiceException("request GetFeature failed due to", e);
         }
-        return response;
     }
 
     /**
@@ -238,8 +240,8 @@ public class AnalysisWebProcessingService {
             fc = fjs.readFeatureCollection(new ByteArrayInputStream(
                     tempjs.getBytes("utf-8")));
 
-            org.geotools.xml.Configuration configuration = new org.geotools.gml3.GMLConfiguration();
-            org.geotools.xml.Encoder encoder = new org.geotools.xml.Encoder(configuration);
+            org.geotools.xsd.Configuration configuration = new org.geotools.gml3.GMLConfiguration();
+            org.geotools.xsd.Encoder encoder = new org.geotools.xsd.Encoder(configuration);
 
             //output stream to serialize to
             OutputStream xml = new ByteArrayOutputStream();

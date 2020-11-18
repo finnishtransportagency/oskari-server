@@ -41,12 +41,12 @@ public class PxwebIndicatorsParser {
         final String url = getUrl(path);
 
         Collection<String> languages = getLanguages();
-        List<StatisticalIndicator> indicatorList = null;
+        List<StatisticalIndicator> indicatorList;
         if(url.endsWith(".px")) {
             // No id for indicator, assume the service has a separate indicator key config.
             indicatorList = parsePxFileToMultipleIndicators(path, languages);
         } else {
-            indicatorList = parseStructuredService(null, languages);
+            indicatorList = parseStructuredService(path, languages);
         }
         setupLayers(indicatorList, layers, url);
         return indicatorList;
@@ -75,15 +75,18 @@ public class PxwebIndicatorsParser {
             languages.forEach(lang -> {
                 try {
                     PxTableItem table = getPxTable(path, lang, item.id);
-                    StatisticalIndicator ind = indicatorMap.get(item.id);
+                    String indicatorId = createIndicatorId(table);
+                    StatisticalIndicator ind = indicatorMap.get(indicatorId);
                     if (ind == null) {
                         ind = new StatisticalIndicator();
-                        ind.setId(item.id);
-                        indicatorMap.put(item.id, ind);
+                        ind.setId(indicatorId);
+                        indicatorMap.put(indicatorId, ind);
                         indicators.add(ind);
+                        // only populate model for first (== primary) language as it doesn't support localized labels for variables/selectors
+                        ind.setDataModel(getModel(table));
                     }
                     ind.addName(lang, item.text);
-                    ind.setDataModel(getModel(table));
+                    // TODO: add "mergeModels(lang, model)" that would populate localized labels for variable
                 } catch (IOException e) {
                     LOG.error(e, "Error getting indicators from Pxweb datasource:", config.getUrl());
                 }
@@ -195,7 +198,7 @@ public class PxwebIndicatorsParser {
         }
         for(IdNamePair item: indicatorList.getLabels()) {
             StatisticalIndicator indicator = new StatisticalIndicator();
-            indicator.setId(table.getId() + "::" + item.getKey());
+            indicator.setId(createIndicatorId(table, item.getKey()));
             indicator.addName(lang, item.getValue());
             indicator.addDescription(lang, table.getTitle());
             indicator.setDataModel(selectors);
@@ -205,11 +208,28 @@ public class PxwebIndicatorsParser {
         return list;
     }
 
+    private String createIndicatorId(PxTableItem table) {
+        if (table.getPath() != null) {
+            if (table.getPath().endsWith(".px")) {
+                return table.getPath();
+            }
+            return table.getPath() + "/" + table.getId();
+        }
+        return table.getId();
+    }
+
+    private String createIndicatorId(PxTableItem table, String item) {
+        return createIndicatorId(table) + PxwebConfig.ID_SEPARATOR + item;
+    }
+
     protected StatisticalIndicatorDataModel getModel(PxTableItem table) {
         // selectors are shared between indicators in pxweb
         final StatisticalIndicatorDataModel selectors = new StatisticalIndicatorDataModel();
         selectors.setTimeVariable(config.getTimeVariableId());
         for (VariablesItem item: table.getSelectors()) {
+            if(item.getCode().equals(config.getRegionKey())) {
+                selectors.setHasRegionInfo(true);
+            }
             if(config.getIgnoredVariables().contains(item.getCode())) {
                 continue;
             }
@@ -244,12 +264,12 @@ public class PxwebIndicatorsParser {
         if(path == null) {
             return nextPart;
         }
-        String url = path + "/" +  IOHelper.urlEncode(nextPart).replace("+", "%20").replace("%2F", "/");
-        return url.replaceAll("//", "/");
+        return path + "/" + nextPart;
     }
 
     protected String loadUrl(String url) throws IOException {
-        return IOHelper.getURL(url);
+        // make sure there's no spaces
+        return IOHelper.getURL(url.replaceAll(" ", "%20"));
     }
 
     private Collection<String> getLanguages() {

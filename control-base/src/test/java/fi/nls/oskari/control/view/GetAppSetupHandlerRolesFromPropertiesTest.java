@@ -57,6 +57,8 @@ import static org.powermock.api.mockito.PowerMockito.whenNew;
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(value = {WFSHighlightParamHandler.class, OskariLayerWorker.class, PropertyUtil.class, MapfullHandler.class, ServiceFactory.class})
+// these are needed with PowerMock and Java 11. Haven't tried if Java 13+ still needs these:
+// https://github.com/powermock/powermock/issues/864
 @PowerMockIgnore({"com.sun.org.apache.xalan.*", "com.sun.org.apache.xerces.*", "javax.xml.*", "org.w3c.dom.*", "org.xml.*", "com.sun.org.apache.xml.*"})
 public class GetAppSetupHandlerRolesFromPropertiesTest extends JSONActionRouteTest {
 
@@ -71,6 +73,7 @@ public class GetAppSetupHandlerRolesFromPropertiesTest extends JSONActionRouteTe
         try {
             properties.load(GetAppSetupHandlerRolesFromPropertiesTest.class.getResourceAsStream("test.properties"));
             PropertyUtil.addProperties(properties);
+            PropertyUtil.addProperty("oskari.user.service", "fi.nls.oskari.service.DummyUserService", true);
             PropertyUtil.getNecessary("oskari.locales");
         } catch (DuplicateException e) {
             fail("Should not throw exception" + e.getStackTrace());
@@ -85,8 +88,6 @@ public class GetAppSetupHandlerRolesFromPropertiesTest extends JSONActionRouteTe
         mockViewService();
         mockBundleService();
         mockInternalServices();
-
-
 
         handler.setViewService(viewService);
         handler.setBundleService(bundleService);
@@ -119,7 +120,7 @@ public class GetAppSetupHandlerRolesFromPropertiesTest extends JSONActionRouteTe
         params.getUser().addRole(r);
         handler.handleAction(params);
 
-        verifyResponseContent(ResourceHelper.readJSONResource("GetAppSetupHandlerTest-view-roles-from-properties.json", this))  ;
+        verifyResponseContent(ResourceHelper.readJSONResource("GetAppSetupHandlerTest-view-roles-from-properties.json", this));
     }
 
 

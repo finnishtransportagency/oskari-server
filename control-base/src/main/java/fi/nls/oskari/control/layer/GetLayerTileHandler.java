@@ -7,8 +7,7 @@ import fi.nls.oskari.control.*;
 import fi.nls.oskari.domain.map.OskariLayer;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
-import fi.nls.oskari.map.layer.formatters.LayerJSONFormatter;
-import fi.nls.oskari.map.layer.formatters.LayerJSONFormatterWMS;
+import fi.nls.oskari.map.layer.formatters.LayerJSONFormatterVectorTile;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
@@ -24,7 +23,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.net.HttpURLConnection;
 import java.util.*;
 
+import fi.nls.oskari.service.capabilities.CapabilitiesConstants;
 import static fi.nls.oskari.control.ActionConstants.KEY_ID;
+
 
 @OskariActionRoute("GetLayerTile")
 public class GetLayerTileHandler extends ActionHandler {
@@ -94,6 +95,8 @@ public class GetLayerTileHandler extends ActionHandler {
             con.setDoInput(true);
             con.setFollowRedirects(true);
             con.setUseCaches(false);
+            // tell the service who is making the requests
+            IOHelper.addIdentifierHeaders(con);
             con.connect();
 
             if (doOutPut) {
@@ -101,8 +104,14 @@ public class GetLayerTileHandler extends ActionHandler {
             }
 
             final int responseCode = con.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                // prevent excessive logging by handling a common case where service responds with 404
+                params.getResponse().sendError(HttpServletResponse.SC_NOT_FOUND);
+                LOG.debug("URL reported 404:", url);
+                return;
+            }
             final String contentType = con.getContentType().toLowerCase();
-            if(responseCode != HttpURLConnection.HTTP_OK || !contentType.startsWith("image/")) {
+            if(responseCode != HttpURLConnection.HTTP_OK || !isContentTypeOK(contentType)) {
                 LOG.warn("URL", url, "returned HTTP response code", responseCode,
                         "with message", con.getResponseMessage(), "and content-type:", contentType);
                 String msg = IOHelper.readString(con);
@@ -132,12 +141,18 @@ public class GetLayerTileHandler extends ActionHandler {
         }
     }
 
-    private String getURL(final ActionParameters params, final OskariLayer layer) {
+    private boolean isContentTypeOK(String contentType) {
+        return contentType.startsWith("image/")
+                || contentType.startsWith("application/octet-stream")
+                || contentType.startsWith("application/vnd.mapbox-vector-tile");
+    }
+
+    private String getURL(final ActionParameters params, final OskariLayer layer) throws ActionParamsException {
         if (params.getHttpParam(LEGEND, false)) {
-            return this.getLegendURL(layer, params.getHttpParam(LayerJSONFormatterWMS.KEY_STYLE, null));
+            return this.getLegendURL(layer, params.getHttpParam(CapabilitiesConstants.KEY_STYLE, null));
         }
         final HttpServletRequest httpRequest = params.getRequest();
-        if(OskariLayer.TYPE_WMTS.equalsIgnoreCase(layer.getType())) {
+        if (OskariLayer.TYPE_WMTS.equalsIgnoreCase(layer.getType())) {
             // check for rest url
             final String urlTemplate = JSONHelper.getStringFromJSON(layer.getOptions(), "urlTemplate", null);
             if(urlTemplate != null) {
@@ -156,6 +171,15 @@ public class GetLayerTileHandler extends ActionHandler {
                         .replaceFirst("\\{TileRow\\}", capsParams.get(KEY_TILEROW) != null ? capsParams.get(KEY_TILEROW) : KEY_TILEROW)
                         .replaceFirst("\\{TileCol\\}", capsParams.get(KEY_TILECOL) != null ? capsParams.get(KEY_TILECOL) : KEY_TILECOL);
             }
+        } else if (OskariLayer.TYPE_VECTOR_TILE.equalsIgnoreCase(layer.getType())) {
+            // TODO: Figure out CRS
+            int x = params.getRequiredParamInt(LayerJSONFormatterVectorTile.URL_PARAM_X);
+            int y = params.getRequiredParamInt(LayerJSONFormatterVectorTile.URL_PARAM_Y);
+            int z = params.getRequiredParamInt(LayerJSONFormatterVectorTile.URL_PARAM_Z);
+            return layer.getUrl()
+                    .replaceFirst("\\{x\\}", String.valueOf(x))
+                    .replaceFirst("\\{y\\}", String.valueOf(y))
+                    .replaceFirst("\\{z\\}", String.valueOf(z));
         }
 
         Map<String, String> urlParams = getUrlParams(httpRequest);
@@ -186,9 +210,9 @@ public class GetLayerTileHandler extends ActionHandler {
         if (style_name != null) {
             // Get Capabilities style url
             JSONObject json = layer.getCapabilities();
-            if (json.has(LayerJSONFormatter.KEY_STYLES)) {
+            if (json.has(CapabilitiesConstants.KEY_STYLES)) {
 
-                JSONArray styles = JSONHelper.getJSONArray(json, LayerJSONFormatter.KEY_STYLES);
+                JSONArray styles = JSONHelper.getJSONArray(json, CapabilitiesConstants.KEY_STYLES);
                 for (int i = 0; i < styles.length(); i++) {
                     final JSONObject style = JSONHelper.getJSONObject(styles, i);
                     if (JSONHelper.getStringFromJSON(style, NAME, "").equals(style_name)) {

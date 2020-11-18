@@ -66,6 +66,8 @@ import static org.powermock.api.support.membermodification.MemberModifier.suppre
  */
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(value = {WFSHighlightParamHandler.class, OskariLayerWorker.class, PropertyUtil.class, MapfullHandler.class, ServiceFactory.class})
+// these are needed with PowerMock and Java 11. Haven't tried if Java 13+ still needs these:
+// https://github.com/powermock/powermock/issues/864
 @PowerMockIgnore({"com.sun.org.apache.xalan.*", "com.sun.org.apache.xerces.*", "javax.xml.*", "org.w3c.dom.*", "org.xml.*", "com.sun.org.apache.xml.*"})
 public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
@@ -80,6 +82,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
         try {
             properties.load(GetAppSetupHandlerTest.class.getResourceAsStream("test.properties"));
             PropertyUtil.addProperties(properties);
+            PropertyUtil.addProperty("oskari.user.service", "fi.nls.oskari.service.DummyUserService", true);
             String locales = PropertyUtil.getNecessary("oskari.locales");
             if (locales == null)
                 fail("No darned locales");
@@ -226,6 +229,7 @@ public class GetAppSetupHandlerTest extends JSONActionRouteTest {
 
         final View dummyView = ViewTestHelper.createMockView("framework.mapfull");
         dummyView.setType(ViewTypes.USER);
+        dummyView.setOnlyForUuId(false);
         doReturn(dummyView).when(viewService).getViewWithConfByOldId(anyLong());
         doReturn(dummyView).when(viewService).getViewWithConf(anyLong());
         doReturn(dummyView).when(viewService).getViewWithConfByUuId(anyString());

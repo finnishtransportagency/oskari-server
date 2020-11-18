@@ -7,9 +7,9 @@ import fi.nls.oskari.db.DatasourceHelper;
 import fi.nls.oskari.domain.User;
 import fi.nls.oskari.domain.map.MyPlace;
 import fi.nls.oskari.domain.map.MyPlaceCategory;
-import fi.nls.oskari.domain.map.UserDataStyle;
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
+import fi.nls.oskari.mybatis.JSONObjectMybatisTypeHandler;
 import fi.nls.oskari.service.OskariComponentManager;
 import fi.nls.oskari.util.ConversionHelper;
 import org.apache.ibatis.mapping.Environment;
@@ -58,7 +58,11 @@ public class MyPlacesServiceMybatisImpl extends MyPlacesService {
     }
 
     private MyPlaceCategory getFromCache(long id) {
-        return cache.get(Long.toString(id));
+        return cache.get(getCacheKey(id));
+    }
+
+    public static String getCacheKey(long id) {
+        return Long.toString(id);
     }
 
     private MyPlaceCategory cache(MyPlaceCategory layer) {
@@ -74,8 +78,8 @@ public class MyPlacesServiceMybatisImpl extends MyPlacesService {
 
         final Configuration configuration = new Configuration(environment);
         configuration.getTypeAliasRegistry().registerAlias(MyPlaceCategory.class);
-        configuration.getTypeAliasRegistry().registerAlias(UserDataStyle.class);
         configuration.getTypeAliasRegistry().registerAlias(MyPlace.class);
+        configuration.getTypeHandlerRegistry().register(JSONObjectMybatisTypeHandler.class);
         configuration.setLazyLoadingEnabled(true);
         configuration.addMapper(MyPlaceMapper.class);
 
@@ -210,7 +214,7 @@ public class MyPlacesServiceMybatisImpl extends MyPlacesService {
             // update data in cache
             MyPlaceCategory layer = getFromCache(id);
             if (layer != null && rows > 0) {
-                layer.setPublisher_name(name);
+                cache.remove(getCacheKey(id));
             }
             return rows;
         } catch (Exception e) {
