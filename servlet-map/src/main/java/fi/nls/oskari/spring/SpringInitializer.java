@@ -24,7 +24,7 @@ public class SpringInitializer extends AbstractHttpSessionApplicationInitializer
     private Logger log = LogFactory.getLogger(SpringInitializer.class);
 
     @Override
-    public void onStartup(ServletContext servletContext) throws ServletException {
+    public void onStartup(ServletContext servletContext) {
         // IMPORTANT! read properties at startup - needed for profile selection
         WebappHelper.loadProperties();
         // re-init logger so we get the one configured in properties
@@ -42,6 +42,11 @@ public class SpringInitializer extends AbstractHttpSessionApplicationInitializer
         }
     }
 
+    /**
+     * @see fi.nls.oskari.cache.JedisManager#isClusterEnv()
+     * @param context
+     * @return
+     */
     private boolean isRedisSessionActived(WebApplicationContext context) {
         String[] profiles = context.getEnvironment().getActiveProfiles();
         for (String profile: profiles) {

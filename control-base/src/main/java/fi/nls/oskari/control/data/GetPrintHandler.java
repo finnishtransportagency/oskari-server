@@ -239,7 +239,6 @@ public class GetPrintHandler extends AbstractWFSFeaturesHandler {
         String mapLayers = params.getRequiredParam(PARM_MAPLAYERS);
         User user = params.getUser();
         LayerProperties[] requestedLayers = parseLayersProperties(mapLayers);
-        JSONObject customStyles = params.getHttpParamAsJSON(PARM_CUSTOM_STYLES);
         List<PrintLayer> printLayers = new ArrayList<>();
         int zIndex = 0;
         for (LayerProperties requestedLayer : requestedLayers) {
@@ -251,8 +250,9 @@ public class GetPrintHandler extends AbstractWFSFeaturesHandler {
             }
         }
         printLayers.removeIf(layer -> layer.getOpacity() <= 0);
-        // set custom styles
-        if (customStyles != null){
+        // set custom stylea
+        JSONObject customStyles = getCustomStyles(params);
+        if (customStyles != null) {
             printLayers.forEach(l -> {
                 String id = l.getLayerId();
                 if (customStyles.has(id)) {
@@ -260,6 +260,7 @@ public class GetPrintHandler extends AbstractWFSFeaturesHandler {
                 }
             });
         }
+
         return printLayers;
     }
 
@@ -305,6 +306,25 @@ public class GetPrintHandler extends AbstractWFSFeaturesHandler {
         return printLayer;
     }
 
+    /**
+     * Override findMaplayer from AbstractWFSFeaturesHandler since that one requires the layer to be WFS and print is ok
+     * with having other types as well
+     * @param id
+     * @param user
+     * @return
+     * @throws ActionException
+     */
+    @Override
+    protected OskariLayer findMapLayer(String id, User user) throws ActionException {
+        int layerId;
+        try {
+            layerId = Integer.parseInt(id);
+        } catch (NumberFormatException e) {
+            throw new ActionParamsException(ERR_INVALID_ID);
+        }
+        return permissionHelper.getLayer(layerId, user);
+    }
+
     private int getOpacity(Integer requestedOpacity, Integer layersDefaultOpacity) {
         int opacity;
         if (requestedOpacity != null) {
@@ -318,6 +338,29 @@ public class GetPrintHandler extends AbstractWFSFeaturesHandler {
             opacity = 100;
         }
         return Math.min(opacity, 100);
+    }
+    /**
+     * Returns custom styles from param or payload or null if not present.
+     */
+    private JSONObject getCustomStyles(ActionParameters params) {
+        try {
+            JSONObject customStyles = params.getHttpParamAsJSON(PARM_CUSTOM_STYLES);
+            if (customStyles != null) {
+                return customStyles;
+            }
+        } catch (ActionParamsException ignored) {
+            LOG.ignore(ignored);
+        }
+
+        if ("POST".equals(params.getRequest().getMethod())) {
+            try {
+                JSONObject payload = params.getPayLoadJSON();
+                return payload.optJSONObject(PARM_CUSTOM_STYLES);
+            } catch(ActionParamsException ignored) {
+                LOG.ignore("Payload not included in request", ignored);
+            }
+        }
+        return null;
     }
 
     private void setTiles(List<PrintLayer> layers, String tilesJson)

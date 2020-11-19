@@ -1,5 +1,114 @@
 # Release Notes
 
+## 2.1.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/26?closed=1
+
+WFS-layers can now have a filter for fetching features:
+- Admin users can set filter to layer "attributes" 
+- https://github.com/oskariorg/oskari-docs/issues/228
+- https://oskari.org/documentation/examples/oskari-filter
+
+Log levels can now be updated programmatically:
+- Admin users can set log levels at runtime (no UI for this yet)
+- Helps debugging issues in production
+- For details: https://github.com/oskariorg/oskari-server/pull/658
+
+Improved support for clustered server environment:
+- Caches communicate removals/flushes between cluster nodes
+- Programmatically setting log level is communicated between cluster nodes
+- Documentation available in https://oskari.org/documentation/features/server/clustering
+
+Redis PubSub integration rewrite:
+- fi.nls.oskari.cache.JedisSubscriber has been deprecated
+- Use org.oskari.cluster.ClusterManager instead
+
+Identifying Oskari instance in HTTP requests:
+- Added `IOHelper.addIdentifierHeaders(connection)` for identifying Oskari to services. Adds headers:
+  - User-agent header with Oskari/[version] based on metadata in jar-file
+  - Referer with value from oskari.domain in oskari-ext.properties
+- OSM Search channel and layer tile proxying now sends client identifiers to the service
+
+Other improvements and changes:
+- Improvements on WMS capabilities parsing
+- Improvements on MIF/MID file reading when importing datasets
+- Fix for feature data export on Excel format
+- Logging reduced in layer tile proxy and printing for HTTP 404 answers from service
+- Other improvements
+
+Library updates:
+- Updated commons-lang 3.8.1 -> 3.11
+- Dropped commons-lang 2 (updated code to use version 3)
+
+## 2.0.1
+
+Changes coordinates type from string to double on search channels and search results.
+Frontend assumes numbers on 2.0 and most of the code casts numbers to strings just for the SearchResultItem setter. 
+
+## 2.0.0
+
+For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/25?closed=1
+
+### Important note for the release!
+
+If you are migrating an older instance to 2.0.0 make sure you migrate to 1.56.0 first
+ and start your server at least once with a version based on Oskari 1.56.0. This is a required step as 
+ the database needs to be migrated to a specific state before migrating to 2.0.0 and beyond.
+
+This release aims to be functionally same as 1.56.0 but we have included a couple of bug fixes.
+
+### Maven naming changes
+ 
+GroupId for all Oskari Maven artifacts in oskari-server is now `org.oskari`.
+Much of the artifactIds have also been changed to match the folder they are in.
+Details can be found in [Migration Guide](https://github.com/oskariorg/oskari-server/blob/master/MigrationGuide.md). 
+
+### Library updates
+
+We have updated a bunch of libraries that require changes to applications based on Oskari. 
+The changes required are detailed in the [Migration Guide](https://github.com/oskariorg/oskari-server/blob/master/MigrationGuide.md)
+and you can also take a look at changes for the [sample-server-extension](https://github.com/oskariorg/sample-server-extension/milestone/5?closed=1)
+ to give you a better idea what these mean for your app.
+
+Bigger upgrades include:
+
+- GeoTools 19.2 -> 23.2
+- Java Topology Suite (JTS) 1.14.0 -> 1.16.1
+- Spring Framework 4.3.26 -> 
+- Spring Security etc 4.2.14 -> 5.2.8
+- Mapbox Vector Tile library 2.0.0 -> 3.1.0
+- Flyway 4.2 -> 6.5.5
+- GeoServer 2.13.2 -> 2.17.2 (WPS-modules updated in pre-built package)
+- Dropped Ibatis (everything now uses MyBatis instead)
+
+Spring is now managed with "Bill Of Materials" so it's easier for an application to use the same version as Oskari-server 
+without re-declaring the version (spring artifacts are in managed dependencies so you don't have to declare version for them on your app).
+ 
+The updates introduce a bunch of code changes that are required to be matched on applications based on Oskari.
+These include Java-package changes and even some API changes for Java classes. 
+Details can be found in [Migration Guide](https://github.com/oskariorg/oskari-server/blob/master/MigrationGuide.md). 
+
+### Applications and initial content
+
+Support for setup.json files have been dropped. While this might feel like a downgrade it actually makes creating 
+initial content for applications simpler and easier to understand. Everything is now done using Flyway-migrations and
+everything you could do with a setup.json you can do with migrations. For the oskari-server core modules this includes
+ creating database tables for empty database and populating them with initial content. We have dropped all the 1.x
+ migrations and with that have been able to cleanup the codebase a fair bit.
+
+We also improved the helpers that can be used with application specific Flyway-modules to make registering bundles, 
+map layer and appsetup inserts/updates easier in applications. We also renamed some of the database tables so table names are
+now consistent. 
+
+Because of Flyway API changes you will need to modify your application specific migrations.
+Details can be found in [Migration Guide](https://github.com/oskariorg/oskari-server/blob/master/MigrationGuide.md). 
+
+### Bug fixes
+
+- Line color for printing has been fixed (now uses defined style again)
+- Fixed a caching issue when printing user generated content after changing styling
+- Fixed an issue with creating PDF having solid lines  
+
 ## 1.56.0
 
 For a full list of changes see: https://github.com/oskariorg/oskari-server/milestone/23?closed=1

@@ -58,7 +58,11 @@ public class MyPlacesServiceMybatisImpl extends MyPlacesService {
     }
 
     private MyPlaceCategory getFromCache(long id) {
-        return cache.get(Long.toString(id));
+        return cache.get(getCacheKey(id));
+    }
+
+    public static String getCacheKey(long id) {
+        return Long.toString(id);
     }
 
     private MyPlaceCategory cache(MyPlaceCategory layer) {
@@ -210,7 +214,7 @@ public class MyPlacesServiceMybatisImpl extends MyPlacesService {
             // update data in cache
             MyPlaceCategory layer = getFromCache(id);
             if (layer != null && rows > 0) {
-                layer.setPublisher_name(name);
+                cache.remove(getCacheKey(id));
             }
             return rows;
         } catch (Exception e) {
