@@ -1,5 +1,6 @@
 package org.geotools.gpx.gpx10;
 
+
 import java.math.BigDecimal;
 
 import javax.xml.namespace.QName;

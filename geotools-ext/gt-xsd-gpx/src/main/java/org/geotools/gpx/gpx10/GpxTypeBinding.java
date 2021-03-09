@@ -1,4 +1,5 @@
 package org.geotools.gpx.gpx10;
+
 import java.util.List;
 
 import javax.xml.namespace.QName;
