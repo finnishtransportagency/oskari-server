@@ -16,6 +16,7 @@ import fi.nls.oskari.util.PropertyUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.oskari.permissions.PermissionService;
+import org.oskari.service.user.LayerAccessHandler;
 import org.oskari.service.util.ServiceFactory;
 
 import javax.servlet.http.HttpServletRequest;
@@ -25,6 +26,8 @@ import java.util.*;
 
 import fi.nls.oskari.service.capabilities.CapabilitiesConstants;
 import static fi.nls.oskari.control.ActionConstants.KEY_ID;
+import static fi.nls.oskari.map.layer.formatters.LayerJSONFormatter.KEY_LEGENDS;
+import static fi.nls.oskari.map.layer.formatters.LayerJSONFormatter.KEY_GLOBAL_LEGEND;
 
 
 @OskariActionRoute("GetLayerTile")
@@ -39,6 +42,7 @@ public class GetLayerTileHandler extends ActionHandler {
     private static final boolean GATHER_METRICS = PropertyUtil.getOptional("GetLayerTile.metrics", true);
     private static final String METRICS_PREFIX = "Oskari.GetLayerTile";
     private PermissionHelper permissionHelper;
+    private Collection<LayerAccessHandler> layerAccessHandlers;
 
     // WMTS rest layers params
     private static final String KEY_STYLE = "STYLE";
@@ -52,6 +56,9 @@ public class GetLayerTileHandler extends ActionHandler {
      */
     public void init() {
         permissionHelper = new PermissionHelper(ServiceFactory.getMapLayerService(), OskariComponentManager.getComponentOfType(PermissionService.class));
+
+        Map<String, LayerAccessHandler> handlerComponents = OskariComponentManager.getComponentsOfType(LayerAccessHandler.class);
+        this.layerAccessHandlers = handlerComponents.values();
     }
 
     /**
@@ -86,6 +93,8 @@ public class GetLayerTileHandler extends ActionHandler {
         }
         // TODO: we should handle redirects here or in IOHelper or start using a lib that handles 301/302 properly
         HttpURLConnection con = getConnection(url, layer);
+
+        layerAccessHandlers.forEach(handler -> handler.handle(layer, params.getUser()));
 
         try {
             con.setRequestMethod(httpMethod);
@@ -202,12 +211,21 @@ public class GetLayerTileHandler extends ActionHandler {
     /**
      * Get Legend image url
      * @param layer  Oskari layer
-     * @param style_name  style name for legend
+     * @param styleName  style name for legend
      * @return
      */
-    private String getLegendURL(final OskariLayer layer, String style_name) {
-        String lurl = layer.getLegendImage();
-        if (style_name != null) {
+    private String getLegendURL(final OskariLayer layer, String styleName) {
+        // Get overridden legends
+        Map<String,String> legends = JSONHelper.getObjectAsMap(layer.getOptions().optJSONObject(KEY_LEGENDS));
+        String lurl = legends.getOrDefault(KEY_GLOBAL_LEGEND, "");
+        if (styleName != null) {
+            if (legends.containsKey(styleName)) {
+                return legends.get(styleName);
+            }
+            if (!lurl.isEmpty()) {
+                // use global legend url
+                return lurl;
+            }
             // Get Capabilities style url
             JSONObject json = layer.getCapabilities();
             if (json.has(CapabilitiesConstants.KEY_STYLES)) {
@@ -215,7 +233,7 @@ public class GetLayerTileHandler extends ActionHandler {
                 JSONArray styles = JSONHelper.getJSONArray(json, CapabilitiesConstants.KEY_STYLES);
                 for (int i = 0; i < styles.length(); i++) {
                     final JSONObject style = JSONHelper.getJSONObject(styles, i);
-                    if (JSONHelper.getStringFromJSON(style, NAME, "").equals(style_name)) {
+                    if (JSONHelper.getStringFromJSON(style, NAME, "").equals(styleName)) {
                         return style.optString(LEGEND);
                     }
                 }
