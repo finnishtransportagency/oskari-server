@@ -83,6 +83,9 @@ public class Resource {
     }
 
     public boolean hasPermission(User user, String permissionType) {
+        if (user == null) {
+            return false;
+        }
         boolean userHasRoleWithId = getPermissions().stream()
                 .filter(p -> p.isOfType(permissionType))
                 .filter(p -> p.getExternalType() == PermissionExternalType.ROLE)
@@ -108,6 +111,9 @@ public class Resource {
         return hasPermission(role, permissionType.name());
     }
     public boolean hasPermission(Role role, String permissionType) {
+        if (role == null) {
+            return false;
+        }
         return hasRolePermission(role.getId(), permissionType);
     }
 
@@ -126,6 +132,10 @@ public class Resource {
 
     public void removePermissionsOfType(String permissionType, PermissionExternalType idType, int externalId) {
         getPermissions().removeIf(p -> p.isOfType(permissionType) && p.getExternalType().equals(idType) && p.getExternalId() == externalId);
+    }
+
+    public void removePermissionsForExternalType(PermissionExternalType idType, int externalId) {
+        getPermissions().removeIf(p -> p.getExternalType().equals(idType) && p.getExternalId() == externalId);
     }
 
     public void removePermissionsFromAllUsers(String permissionType) {

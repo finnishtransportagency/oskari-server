@@ -8,12 +8,11 @@ import fi.nls.oskari.util.IOHelper;
 import fi.nls.oskari.util.JSONHelper;
 import fi.nls.oskari.util.PropertyUtil;
 
-import org.apache.commons.lang.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.*;
-
+import static fi.nls.oskari.service.capabilities.CapabilitiesConstants.*;
 /**
  * Created with IntelliJ IDEA.
  * User: SMAKINEN
@@ -24,24 +23,8 @@ import java.util.*;
 public class LayerJSONFormatterWMS extends LayerJSONFormatter {
 
     private static Logger log = LogFactory.getLogger(LayerJSONFormatterWMS.class);
-
-    public static final String KEY_STYLE = "style";
-    public static final String KEY_LEGEND = "legend";
-    public static final String KEY_TIMES = "times";
-    public static final String KEY_VALUE = "value";
-    public static final String KEY_FORMATS = "formats";
     public static final String KEY_GFICONTENT = "gfiContent";
-    public static final String KEY_LEGENDIMAGE = "legendImage";
-    public static final String KEY_VERSION = "version";
-    public static final String KEY_ISQUERYABLE = "isQueryable";
     public static final String KEY_ATTRIBUTES = "attributes";
-    public static final String KEY_GEOM = "geom";
-
-    // There working only plain text and html so ranked up
-    private static String[] SUPPORTED_GET_FEATURE_INFO_FORMATS = new String[] {
-            "text/html", "text/plain", "application/vnd.ogc.se_xml",
-            "application/vnd.ogc.gml", "application/vnd.ogc.wms_xml",
-            "text/xml" };
 
 
     public JSONObject getJSON(OskariLayer layer,
@@ -64,6 +47,11 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
             else {
                 JSONHelper.putValue(formats, KEY_VALUE, layer.getGfiType());
             }
+        }
+        try {
+            JSONHelper.putValue(layerJson, KEY_STYLES, createStylesJSON(layer, isSecure));
+        } catch (Exception e) {
+            log.warn(e, "Populating layer styles failed for id: " + layer.getId());
         }
         includeCapabilitiesInfo(layerJson, layer, layer.getCapabilities());
         return layerJson;
@@ -95,39 +83,6 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
             return;
         }
 
-        try {
-            final JSONArray styles;
-            // construct a modified styles list
-            final JSONArray styleList = capabilities.optJSONArray(KEY_STYLES);
-            styles = new JSONArray();
-            // replace legendimage urls
-            if(styleList != null) {
-            	for(int i = 0; i < styleList.length(); ++i) {
-            		JSONObject style = styleList.optJSONObject(i);
-            		if (style != null && style.has(KEY_LEGEND)) {
-            			// copy the values to a new object to not affect the original
-            			style = new JSONObject(style, STYLE_KEYS);
-            			// update url from actual to proxied version
-            			JSONHelper.putValue(style, KEY_LEGEND, buildLegendUrl(layer, style.optString("name")));
-            		}
-            		styles.put(style);
-            	}
-            }
-
-            JSONHelper.putValue(layerJson, KEY_STYLES, styles);
-
-            final String globalLegend = layer.getLegendImage();
-            // if we have a global legend url, setup the JSON
-            if(globalLegend != null && !globalLegend.isEmpty()) {
-            	JSONHelper.putValue(layerJson, KEY_LEGENDIMAGE, buildLegendUrl(layer, null));
-            	// copy the original value so we can show them for admins
-            	addInfoForAdmin(layerJson, KEY_LEGENDIMAGE, globalLegend);
-            }
-
-        } catch (Exception e) {
-            log.warn(e, "Populating layer styles failed!");
-        }
-
         JSONHelper.putValue(layerJson, KEY_FORMATS, capabilities.optJSONObject(KEY_FORMATS));
 
         final JSONObject attrs = layer.getAttributes();
@@ -146,12 +101,26 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
         // copy time from capabilities to attributes
         // timedata is merged into attributes  (times:{start:,end:,interval:}  or times: []
         // only reason for this is that admin can see the values offered by service
-        if(capabilities.has(KEY_TIMES)) {
+        if(capabilities.has(KEY_TIMES) && isTimeseriesLayer(layer)) {
             JSONHelper.putValue(layerJson, KEY_ATTRIBUTES, JSONHelper.merge(
                     JSONHelper.getJSONObject(layerJson, KEY_ATTRIBUTES),
                     JSONHelper.createJSONObject(KEY_TIMES, JSONHelper.get(capabilities, KEY_TIMES))));
         }
 
+    }
+
+    private Boolean isTimeseriesLayer(final OskariLayer layer) {
+        JSONObject options = layer.getOptions();
+        if(options != null && options.has("timeseries")) {
+            JSONObject timeseriesOptions = options.optJSONObject("timeseries");
+            if(timeseriesOptions != null && timeseriesOptions.has("ui")) {
+                String ui = timeseriesOptions.optString("ui");
+                if(ui != null && ui.equals("none")) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -176,7 +145,7 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
         JSONObject formats = getFormatsJSON(wms);
         JSONHelper.putValue(capabilities, KEY_FORMATS, formats);
         JSONHelper.putValue(capabilities, KEY_VERSION, wms.getVersion());
-        JSONHelper.putValue(capabilities, KEY_GEOM, wms.getGeom());
+        JSONHelper.putValue(capabilities, KEY_LAYER_COVERAGE, wms.getGeom());
 
         final Set<String> capabilitiesCRSs = getCRSs(wms);
         final Set<String> crss = getCRSsToStore(systemCRSs, capabilitiesCRSs);
@@ -194,17 +163,6 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
             styles.add(createStylesJSON(styleName, stylesMap.get(styleName), legend));
         }
         return styles;
-    }
-
-    private String buildLegendUrl(final OskariLayer layer, final String styleName) {
-        Map<String, String> urlParams = new HashMap<String, String>();
-        urlParams.put("action_route", "GetLayerTile");
-        urlParams.put("id", Integer.toString(layer.getId()));
-        urlParams.put(KEY_LEGEND, "true");
-        if(styleName != null){
-            urlParams.put(KEY_STYLE, styleName);
-        }
-        return IOHelper.constructUrl(PropertyUtil.get(PROPERTY_AJAXURL), urlParams);
     }
 
     private static JSONObject formatTime(List<String> times) throws IllegalArgumentException {
@@ -269,43 +227,7 @@ public class LayerJSONFormatterWMS extends LayerJSONFormatter {
         return getFormatsJSON(formats);
     }
 
-    public static JSONObject getFormatsJSON(final Collection<String> formats) {
-        final JSONObject formatJSON = new JSONObject();
-        final JSONArray available = new JSONArray();
-        JSONHelper.putValue(formatJSON, "available", available);
-        if(formats == null) {
-            return formatJSON;
-        }
-        // simple but inefficient...
-        // We support the following formats. Formats are presented
-        // in order of preference.
-        // 'application/vnd.ogc.se_xml' == GML
-        // 'application/vnd.ogc.gml' == GML
-        // 'application/vnd.ogc.wms_xml' == text/xml
-        // 'text/xml'
-        // 'text/html'
-        // 'text/plain'
-        try {
-            String value = null;
-            for (String supported : SUPPORTED_GET_FEATURE_INFO_FORMATS) {
-                if (formats.contains(supported)) {
-                    if(value == null) {
-                        // get the first one as default
-                        value = supported;
-                    }
-                    // gather list of supported formats
-                    available.put(supported);
-                }
-            }
-            // default format
-            JSONHelper.putValue(formatJSON, KEY_VALUE, value);
-            return formatJSON;
 
-        } catch (Exception e) {
-            log.warn(e, "Couldn't parse formats for layer");
-        }
-        return formatJSON;
-    }
 
     /**
      * Constructs a unique set of coordinate ref systems supported by the WMS service

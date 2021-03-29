@@ -29,8 +29,6 @@ import org.json.JSONObject;
 
 public class WMTSCapabilitiesParser {
 
-    private static final String KEY_LAYERS_WITH_REMARKS = "layersWithRemarks";
-
     public static WMTSCapabilities parseCapabilities(String xml)
             throws IllegalArgumentException, XMLStreamException {
         OMElement doc = XmlHelper.parseXML(xml);
@@ -259,7 +257,8 @@ public class WMTSCapabilitiesParser {
         }
 
         // ref might be prefixed with the id of TileMatrixSet and ':', atleast MapCache does this
-        int i = ref.indexOf(':');
+        // We need to split from the last ':' as the ref might be something like "EPSG:3067:0"
+        int i = ref.lastIndexOf(':');
         if (i > 0 && ref.startsWith(tms.getId())) {
             ref = ref.substring(i + 1);
             tm = tileMatrices.get(ref);
@@ -283,7 +282,7 @@ public class WMTSCapabilitiesParser {
             String matrixsetid = getMatrixSetId(layer.getLinks(), currentCrs);
             if (matrixsetid == null) {
                 JSONHelper.putValue(layerJson, "title", layer.getTitle() + "  *");
-                JSONHelper.putValue(result, KEY_LAYERS_WITH_REMARKS, "true");
+                JSONHelper.putValue(result, "layersWithRemarks", "true");
             } else {
                 JSONHelper.putValue(layerJson, "tileMatrixSetId", matrixsetid);
             }
@@ -305,12 +304,11 @@ public class WMTSCapabilitiesParser {
 
     /**
      * Get tile matrix set id of current crs
-     * @param caps
      * @param links
      * @param currentCrs
      * @return
      */
-    private static String getMatrixSetId(List<TileMatrixLink> links, String currentCrs) {
+    protected static String getMatrixSetId(List<TileMatrixLink> links, String currentCrs) {
         for (TileMatrixLink link : links) {
             TileMatrixSet tms = link.getTileMatrixSet();
             String tmsCrs = tms.getCrs();

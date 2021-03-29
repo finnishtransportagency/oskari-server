@@ -17,7 +17,7 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.apache.commons.lang.mutable.MutableInt;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Document;
@@ -187,6 +187,7 @@ public class TransformationService {
         List<String> geomcols = new ArrayList<String>();
         geomcols.add(ns_prefix + ":" + geometryProperty);
         geomcols.add(ns_prefix + ":geometry"); // default geometry
+        geomcols.add(ns_prefix + ":geom"); // geoserver uses geom in resultset
 
         MutableInt ncount = new MutableInt(0);
         MutableInt tcount = new MutableInt(0);

@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -30,8 +31,6 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDPageContentStream.AppendMode;
 import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -48,6 +47,7 @@ import org.geotools.referencing.CRS;
 import org.json.JSONObject;
 import org.opengis.feature.simple.SimpleFeature;
 import org.opengis.filter.FilterFactory2;
+import org.opengis.filter.expression.Expression;
 import org.opengis.filter.expression.Function;
 import org.opengis.referencing.FactoryException;
 import org.opengis.referencing.crs.CoordinateReferenceSystem;
@@ -63,17 +63,17 @@ import org.oskari.print.util.Units;
 import org.oskari.print.wmts.WMTSCapabilitiesCache;
 import org.oskari.service.wfs.client.OskariFeatureClient;
 
-import com.vividsolutions.jts.geom.Coordinate;
-import com.vividsolutions.jts.geom.CoordinateSequence;
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryCollection;
-import com.vividsolutions.jts.geom.LineString;
-import com.vividsolutions.jts.geom.MultiLineString;
-import com.vividsolutions.jts.geom.MultiPoint;
-import com.vividsolutions.jts.geom.MultiPolygon;
-import com.vividsolutions.jts.geom.Point;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.util.AffineTransformation;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateSequence;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryCollection;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.MultiLineString;
+import org.locationtech.jts.geom.MultiPoint;
+import org.locationtech.jts.geom.MultiPolygon;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
+import org.locationtech.jts.geom.util.AffineTransformation;
 
 import fi.nls.oskari.log.LogFactory;
 import fi.nls.oskari.log.Logger;
@@ -121,12 +121,6 @@ public class PDF {
             mmToPx(A3W_MM - MAP_MARGIN_MIN_BOTTOM_TOP_MM), // A3_LS
             mmToPx(A2W_MM - MAP_MARGIN_MIN_BOTTOM_TOP_MM)  // A2_LS
     };
-
-    private static final PDFont FONT = PDType1Font.HELVETICA;
-    private static final PDFont FONT_BOLD = PDType1Font.HELVETICA_BOLD;
-    private static final float FONT_SIZE = 12f;
-    private static final float FONT_SIZE_SCALE = 10f;
-    private static final float FONT_SIZE_TIMESERIES = 10f;
 
     private static final float OFFSET_DATE_RIGHT = PDFBoxUtil.mmToPt(40);
     private static final float OFFSET_DATE_TOP = PDFBoxUtil.mmToPt(10);
@@ -274,7 +268,7 @@ public class PDF {
         float marginBottomPx = (pageSize.getHeight() - mapHeight) / 2;
         float y = marginBottomPx + mapHeight + 5;
 
-        PDFBoxUtil.drawTextCentered(stream, title, FONT, FONT_SIZE, x, y);
+        PDFBoxUtil.drawTextCentered(stream, title, PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE, x, y);
     }
 
     private static void drawLogo(PDDocument doc, PDPageContentStream stream,
@@ -286,10 +280,12 @@ public class PDF {
         BufferedImage logo = null;
 
         // Try file
-        try (InputStream in = Files.newInputStream(Paths.get(LOGO_PATH))) {
+        Path pathToLogo = Paths.get(LOGO_PATH);
+        try (InputStream in = Files.newInputStream(pathToLogo)) {
             logo = ImageIO.read(new BufferedInputStream(in));
         } catch (NoSuchFileException e) {
-            LOG.debug("Logo file " + LOGO_PATH + " does not exist");
+            // print out absolute path so it's easier to debug proper value in config
+            LOG.debug("Logo file " + pathToLogo.toAbsolutePath() + " does not exist. Trying from classpath.");
         } catch (IOException e) {
             LOG.warn(e, "Failed to read logo from file");
         }
@@ -318,6 +314,7 @@ public class PDF {
             float y = OFFSET_LOGO_BOTTOM;
             // Maintain the aspect ratio of the image
             float f = LOGO_HEIGHT / img.getHeight();
+            // TODO: return w and calculate OFFSET_SCALE_LEFT based on it
             float w = img.getWidth() * f;
             float h = LOGO_HEIGHT;
             stream.drawImage(img, x, y, w, h);
@@ -335,7 +332,7 @@ public class PDF {
         String date = SDF.format(new Date());
         float x = pageSize.getWidth() - OFFSET_DATE_RIGHT;
         float y = pageSize.getHeight() - OFFSET_DATE_TOP;
-        PDFBoxUtil.drawText(stream, date, FONT, FONT_SIZE, x, y);
+        PDFBoxUtil.drawText(stream, date, PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE, x, y);
     }
 
     private static void drawTimeseriesTexts(PDPageContentStream stream,
@@ -348,9 +345,9 @@ public class PDF {
 
         float x = pageSize.getWidth() - OFFSET_TIMESERIES_RIGHT;
 
-        PDFBoxUtil.drawText(stream, request.getTimeseriesLabel(), FONT, FONT_SIZE_TIMESERIES,
+        PDFBoxUtil.drawText(stream, request.getTimeseriesLabel(), PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE_TIMESERIES,
                 x, OFFSET_TIMESERIES_LABEL_BOTTOM);
-        PDFBoxUtil.drawText(stream, request.getFormattedTime(), FONT, FONT_SIZE_TIMESERIES,
+        PDFBoxUtil.drawText(stream, request.getFormattedTime(), PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE_TIMESERIES,
                 x, OFFSET_TIME_IN_TIMESERIES_BOTTOM);
     }
 
@@ -404,7 +401,7 @@ public class PDF {
         if(request.isScaleText()) {
             float cx = x1 + ((x2 - x1) / 2);
             PDFBoxUtil.drawTextCentered(stream, request.getScaleText(),
-                    FONT, FONT_SIZE_SCALE, cx, y1 + 5);
+                    PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE_SCALE, cx, y1 + 5);
         }
         // else force to draw scalebar
         else {
@@ -423,7 +420,7 @@ public class PDF {
 
             float cx = x1 + ((x2 - x1) / 2);
             PDFBoxUtil.drawTextCentered(stream, distanceStr,
-                    FONT, FONT_SIZE_SCALE, cx, y1 + 5);
+                    PDPrintStyle.FONT, PDPrintStyle.FONT_SIZE_SCALE, cx, y1 + 5);
         }
     }
 
@@ -561,7 +558,7 @@ public class PDF {
                 SimpleFeatureCollection subFc = fc.subCollection(rule.getFilter());
                 if (subFc.isEmpty()) continue;
                 PDPrintStyle style = rule.getStyle();
-                setDrawingStyle(stream, style);
+                style.apply(stream);
                 try (SimpleFeatureIterator it = subFc.features()) {
                     while (it.hasNext()) {
                         drawFeature(stream, transform, it.next(), style);
@@ -574,7 +571,7 @@ public class PDF {
     }
     private static void drawMarkers(PDDocument doc, PDPageContentStream pageStream, String markers,
                                         AffineTransformation transform, float x, float y, float w, float h) throws IOException {
-        if (markers.isEmpty()) return;
+        if (markers == null || markers.isEmpty()) return;
         // Create a Form XObject
         PDFormXObject form = new PDFormXObject(doc);
         PDResources resources = new PDResources();
@@ -633,30 +630,28 @@ public class PDF {
             stream.drawForm(icon);
             stream.restoreGraphicsState();
             if (!label.isEmpty()) {
-                drawLabel(stream, c, label);
+                drawLabelAt(stream, c, StyleUtil.LABEL_ALIGN_MAP.get("markers"), label);
             }
         }
     }
 
     private static  List <PrintVectorRule> getRules (PDDocument doc, PDResources resources, PrintLayer layer, String geomName) throws IOException {
-        List <PrintVectorRule> rules = new ArrayList<>();
         Function pointFunc = ff.function("in2", ff.function("geometryType", ff.property(geomName)), ff.literal("Point"), ff.literal("MultiPoint"));
         Function lineFunc = ff.function("in2", ff.function("geometryType", ff.property(geomName)), ff.literal("LineString"), ff.literal("MultiLineString"));
         Function polygonFunc = ff.function("in2", ff.function("geometryType", ff.property(geomName)), ff.literal("Polygon"), ff.literal("MultiPolygon"));
+        Expression _true = ff.literal(true);
 
         JSONObject oskariStyle = layer.getOskariStyle();
 
+        List <PrintVectorRule> rules = new ArrayList<>();
         rules.add(new PrintVectorRule(
-                PrintVectorRule.RuleType.POLYGON,
-                ff.equals(polygonFunc, ff.literal(true)),
+                ff.equals(polygonFunc, _true),
                 StyleUtil.getPolygonStyle(oskariStyle, resources)));
         rules.add(new PrintVectorRule(
-                PrintVectorRule.RuleType.LINE,
-                ff.equals(lineFunc, ff.literal(true)),
+                ff.equals(lineFunc, _true),
                 StyleUtil.getLineStyle(oskariStyle)));
         rules.add(new PrintVectorRule(
-                PrintVectorRule.RuleType.POINT,
-                ff.equals(pointFunc, ff.literal(true)),
+                ff.equals(pointFunc, _true),
                 StyleUtil.getPointStyle(oskariStyle, doc)));
 
         return rules;
@@ -669,22 +664,6 @@ public class PDF {
             gs.setStrokingAlphaConstant(alpha);
             gs.setNonStrokingAlphaConstant(alpha);
             stream.setGraphicsStateParameters(gs);
-        }
-    }
-    private static void setDrawingStyle(PDPageContentStream stream, PDPrintStyle style) throws IOException {
-        stream.setLineWidth(style.getLineWidth());
-        stream.setLineJoinStyle(style.getLineJoin());
-        stream.setLineCapStyle(style.getLineCap());
-        if (style.hasLineColor()) {
-            stream.setStrokingColor(style.getLineColor());
-        }
-        if (style.hasLinePattern()) {
-            stream.setLineDashPattern(style.getLinePattern(), 0);
-        }
-        if (style.hasFillPattern()) {
-            stream.setNonStrokingColor(style.getFillPattern());
-        } else if (style.hasFillColor()) {
-            stream.setNonStrokingColor(style.getFillColor());
         }
     }
 
@@ -701,17 +680,16 @@ public class PDF {
         g = transform.transform(g);
         draw(stream, g, style);
         if (style.hasLabels()){
-            String label = "";
             // take first property with content
-            for (String p : style.getLabelProperty()){
-                String atr = (String) f.getAttribute(p);
-                if (atr != null && !atr.isEmpty()) {
-                    label = atr;
-                    break;
-                }
-            }
-            if (!label.isEmpty()){
-                drawLabel(stream, g, label);
+            String label = style.getLabelProperty().stream()
+                    .map(it -> f.getAttribute(it))
+                    .filter(it -> it != null)
+                    .map(it -> it.toString())
+                    .filter(it -> !it.isEmpty())
+                    .findFirst()
+                    .orElse("");
+            if (!label.isEmpty()) {
+                drawLabel(stream, g, style.getLabelAlign(), label);
             }
 
         }
@@ -735,25 +713,26 @@ public class PDF {
         }
     }
 
-    private static void drawLabel(PDPageContentStream stream, Geometry g, String label) throws IOException {
+    private static void drawLabel(PDPageContentStream stream, Geometry g,  PDPrintStyle.LabelAlign align, String label) throws IOException {
         Coordinate c;
         if (g instanceof MultiPoint || g instanceof MultiPolygon ) {
             for (int i = 0 ; i < g.getNumGeometries(); i++){
                 c = g.getGeometryN(i).getCentroid().getCoordinate();
-                drawLabel(stream, c , label);
+                drawLabelAt(stream, c, align, label);
             }
         } else if (g instanceof LineString) {
             c = getLineCentroid ((LineString) g);
-            drawLabel(stream, c , label);
+            drawLabelAt(stream, c, align, label);
+
         } else if (g instanceof MultiLineString) {
             for (int i = 0; i < g.getNumGeometries(); i++) {
                 c = getLineCentroid ((LineString) g.getGeometryN(i));
-                drawLabel(stream, c, label);
+                drawLabelAt(stream, c, align, label);
             }
         }
     }
     private static void setLabelStyle (PDPageContentStream stream) throws IOException  {
-        stream.setLineDashPattern(StyleUtil.LINE_PATTERN_SOLID, 0);
+        stream.setLineDashPattern(PDPrintStyle.LinePattern.solid.f.apply(0f), 0);
         stream.setRenderingMode(RenderingMode.FILL_STROKE);
         stream.setNonStrokingColor(Color.BLACK);
         stream.setStrokingColor(Color.WHITE);
@@ -763,7 +742,7 @@ public class PDF {
         int i = line.getNumPoints()/2;
         return line.getPointN(i).getCoordinate();
     }
-    private static void drawLabel (PDPageContentStream stream, Coordinate c, String label) throws IOException {
+    private static void drawLabelAt (PDPageContentStream stream, Coordinate c, PDPrintStyle.LabelAlign align, String label) throws IOException {
         stream.saveGraphicsState();
         //setLabelStyle(stream);
 
@@ -772,8 +751,8 @@ public class PDF {
         stream.setNonStrokingColor(Color.BLACK);
 
         stream.beginText();
-        stream.setFont(FONT_BOLD, FONT_SIZE);
-        stream.setTextMatrix(Matrix.getTranslateInstance((float) c.x + 8f, (float) c.y - 4f));
+        stream.setFont(PDPrintStyle.FONT_BOLD, PDPrintStyle.FONT_SIZE);
+        stream.setTextMatrix(Matrix.getTranslateInstance((float) c.x + align.getLabelX(label), (float) c.y + align.getLabelY()));
         stream.showText(label);
         stream.endText();
         stream.restoreGraphicsState();

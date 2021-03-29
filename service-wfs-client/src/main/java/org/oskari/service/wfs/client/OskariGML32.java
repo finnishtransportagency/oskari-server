@@ -11,14 +11,14 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.geotools.data.simple.SimpleFeatureCollection;
 import org.geotools.feature.DefaultFeatureCollection;
 
-import org.geotools.xml.DOMParser;
+import org.geotools.xsd.DOMParser;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 import fi.nls.oskari.util.XmlHelper;
 import net.opengis.wfs20.FeatureCollectionType;
 
-public class OskariGML32 {
+public class OskariGML32 implements OskariGMLDecoder {
 
     public SimpleFeatureCollection decodeFeatureCollection(InputStream in, String username, String password)
             throws IOException, SAXException, ParserConfigurationException {
